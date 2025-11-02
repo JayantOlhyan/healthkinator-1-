@@ -1,0 +1,5 @@
+{
+  "name": "Healthkinator: AI Symptom Guesser",
+  "description": "An interactive, AI-powered symptom assessment tool that mimics the engaging style of Akinator. It asks simple, adaptive yes/no questions in a conversational format to guide users toward a probable diagnosis.",
+  "requestFramePermissions": []
+}
