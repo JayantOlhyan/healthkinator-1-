@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -9,15 +8,45 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
       body {
-        font-family: 'Roboto', sans-serif;
+        font-family: 'Inter', sans-serif;
       }
-      h1, h2, h3, h4, h5, h6, .font-display {
-        font-family: 'Orbitron', sans-serif;
+      /* Custom selection color */
+      ::selection {
+        background-color: #a7f3d0; /* Tailwind emerald-200 */
+        color: #065f46; /* Tailwind emerald-800 */
+      }
+      .dark ::selection {
+        background-color: #065f46; /* Tailwind emerald-800 */
+        color: #a7f3d0; /* Tailwind emerald-200 */
+      }
+      /* Simple fade-in animation */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
       }
     </style>
+    <script>
+      // Set theme on page load to prevent flash of unstyled content
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Tailwind config
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {},
+        }
+      }
+    </script>
   <script type="importmap">
 {
   "imports": {
@@ -29,7 +58,7 @@
 }
 </script>
 </head>
-  <body>
+  <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

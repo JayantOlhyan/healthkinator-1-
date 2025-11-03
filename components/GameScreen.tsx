@@ -1,154 +1,246 @@
-import React, { useState, useEffect } from 'react';
-import type { Content } from '@google/genai';
-import { Diagnosis, GeminiResponse, UserAnswer } from '../types';
-import { generateResponse } from '../services/geminiService';
-import { MAX_QUESTIONS } from '../constants';
-import { LoadingSpinner, AiAvatarIcon } from './icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserAnswer } from '../types';
+import { LoadingSpinner, MicrophoneIcon } from './icons';
+import { generateSpeech } from '../services/geminiService';
+import { playAudio } from '../utils/audio';
 
-interface GameScreenProps {
-  onFinish: (diagnosis: Diagnosis) => void;
-  onError: (message: string) => void;
+// Fix: Add type definitions for the Web Speech API to resolve TypeScript errors.
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
 }
 
-const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, disabled: boolean }> = ({ onClick, children, disabled }) => (
-    <button 
-        onClick={onClick}
-        disabled={disabled}
-        className="font-display w-full sm:w-auto text-sm sm:text-base bg-slate-800 border border-cyan-500/30 text-cyan-300 font-semibold py-2 px-6 rounded-lg hover:bg-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-    >
-        {children}
-    </button>
-);
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+  readonly message: string;
+}
 
-const GameScreen: React.FC<GameScreenProps> = ({ onFinish, onError }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [history, setHistory] = useState<Content[]>([]);
-  
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onend: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onstart: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+declare var SpeechRecognition: {
+  prototype: SpeechRecognition;
+  new (): SpeechRecognition;
+};
+
+declare var webkitSpeechRecognition: {
+  prototype: SpeechRecognition;
+  new (): SpeechRecognition;
+};
+
+interface GameScreenProps {
+  currentQuestion: string;
+  isLoading: boolean;
+  handleAnswer: (answer: UserAnswer) => void;
+  onQuit: () => void;
+}
+
+const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, disabled: boolean, variant?: 'primary' | 'secondary' }> = ({ onClick, children, disabled, variant = 'secondary' }) => {
+    const primaryClasses = "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/40";
+    const secondaryClasses = "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600";
+    
+    return (
+        <button 
+            onClick={onClick}
+            disabled={disabled}
+            className={`font-bold w-full sm:w-auto py-3 px-8 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${variant === 'primary' ? primaryClasses : secondaryClasses}`}
+        >
+            {children}
+        </button>
+    );
+}
+
+const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, handleAnswer, onQuit }) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const isSpeechRecognitionSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Text-to-Speech for new questions
   useEffect(() => {
-    const startGame = async () => {
-      setIsLoading(true);
-      const initialUserMessage: Content = { role: 'user', parts: [{ text: "Let's begin. Ask me the first question about my symptoms." }] };
-      try {
-        const response = await generateResponse([initialUserMessage]);
-        if (response.type === 'question') {
-          const modelResponse: Content = { role: 'model', parts: [{ text: JSON.stringify(response) }] };
-          setHistory([initialUserMessage, modelResponse]);
-        } else {
-          throw new Error("Initial response was not a question.");
+    if (currentQuestion && !isLoading) {
+      const speakQuestion = async () => {
+        setIsSpeaking(true);
+        try {
+          const base64Audio = await generateSpeech(currentQuestion);
+          await playAudio(base64Audio);
+        } catch (error) {
+          console.error("TTS failed", error);
+        } finally {
+          setIsSpeaking(false);
         }
-      } catch (e) {
-        const error = e as Error;
-        onError(error.message);
-      } finally {
-        setIsLoading(false);
+      };
+      speakQuestion();
+    }
+  }, [currentQuestion, isLoading]);
+
+  // Speech-to-Text setup
+  useEffect(() => {
+    if (!isSpeechRecognitionSupported) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    const recognition = recognitionRef.current;
+    
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setTranscript('');
+      setSpeechError(null);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'no-speech' || event.error === 'audio-capture') {
+        setSpeechError("I didn't hear that. Please try again.");
+      } else {
+        setSpeechError(`Error: ${event.error}. Please try again.`);
       }
     };
-    startGame();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onError]);
 
-  const handleAnswer = async (answer: UserAnswer) => {
-    if (isLoading) return;
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
 
-    setIsLoading(true);
-    const userAnswer: Content = { role: 'user', parts: [{ text: answer }] };
-    const newHistory = [...history, userAnswer];
-
-    try {
-      const response: GeminiResponse = await generateResponse(newHistory);
-      const modelResponse: Content = { role: 'model', parts: [{ text: JSON.stringify(response) }] };
-      setHistory([...newHistory, modelResponse]);
-
-      if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
-        onFinish({
-          condition: response.condition,
-          report: response.text,
-          confidence: response.confidence,
-        });
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+          } else {
+              interimTranscript += event.results[i][0].transcript;
+          }
       }
-    } catch (e) {
-      const error = e as Error;
-      onError(error.message);
-    } finally {
-      setIsLoading(false);
+      setTranscript(interimTranscript);
+
+      const processedTranscript = finalTranscript.trim().toLowerCase();
+      if (processedTranscript) {
+        if (processedTranscript.includes('yes')) {
+            handleAnswer('Yes');
+            recognition.stop();
+        } else if (processedTranscript.includes('no') || processedTranscript.includes('nope')) {
+            handleAnswer('No');
+            recognition.stop();
+        } else if (processedTranscript.includes("don't know") || processedTranscript.includes("do not know")) {
+            handleAnswer("I don't know");
+            recognition.stop();
+        } else {
+            setSpeechError(`"${finalTranscript}" is not a valid answer.`);
+        }
+      }
+    };
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [isSpeechRecognitionSupported, handleAnswer]);
+
+  const toggleListening = () => {
+    if (isLoading || isSpeaking || !recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
     }
   };
 
-  const handleGoBack = () => {
-    if (isLoading) return;
-    // Remove the last user answer and the last model question to go back one step.
-    setHistory(prev => prev.slice(0, -2));
-  };
-  
-  const modelTurns = history.filter(h => h.role === 'model');
-  const questionNumber = modelTurns.length;
-  const lastModelTurn = modelTurns.length > 0 ? modelTurns[modelTurns.length - 1] : null;
-
-  let currentQuestion = '';
-  if (lastModelTurn && lastModelTurn.parts[0]?.text) {
-      try {
-          const parsed: GeminiResponse = JSON.parse(lastModelTurn.parts[0].text);
-          if (parsed.type === 'question') {
-              currentQuestion = parsed.text;
-          }
-      } catch (e) {
-          console.error("Failed to parse last model message", e);
-          currentQuestion = "Error displaying question.";
-      }
+  const getMicStatusText = () => {
+    if (!isSpeechRecognitionSupported) return "Voice input not supported.";
+    if (speechError) return speechError;
+    if (isListening) return transcript ? `"${transcript}"` : "Listening...";
+    if (isSpeaking) return "Healthkinator is speaking...";
+    return "Tap the mic to answer";
   }
 
-  const progress = Math.min(((questionNumber) / MAX_QUESTIONS) * 100, 100);
-  const canGoBack = questionNumber > 1;
-
   return (
-    <div className="w-full h-full flex flex-col items-center justify-between animate-fade-in p-4">
-        <div className="w-full">
-            <div className="flex justify-between items-center mb-2 font-display text-cyan-400">
-                <span>Question {questionNumber}</span>
-                <span>Progress</span>
-            </div>
-            <div className="w-full bg-slate-700 rounded-full h-2.5">
-                <div className="bg-cyan-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-            </div>
+    <div className="w-full text-center flex-grow flex flex-col justify-center">
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center h-40">
+          <LoadingSpinner className="w-12 h-12 text-emerald-500" />
+          <p className="mt-4 text-gray-500 dark:text-gray-400">Healthkinator is thinking...</p>
         </div>
+      ) : (
+        <div className="h-40 flex items-center justify-center">
+          <h2 className="text-3xl text-gray-800 dark:text-gray-100 font-bold max-w-md animate-fade-in">
+            {currentQuestion}
+          </h2>
+        </div>
+      )}
 
-        <div className="flex-grow flex flex-col items-center justify-center w-full text-center my-8">
-            <AiAvatarIcon className="w-20 h-20 text-cyan-400 mb-6" />
-            {isLoading && history.length === 0 ? (
-                <div className="flex flex-col items-center justify-center">
-                    <LoadingSpinner className="w-12 h-12 text-cyan-500" />
-                    <p className="mt-4 text-slate-300">Healthkinator is preparing...</p>
-                </div>
-            ) : isLoading ? (
-                <div className="flex flex-col items-center justify-center">
-                    <LoadingSpinner className="w-12 h-12 text-cyan-500" />
-                    <p className="mt-4 text-slate-300">Healthkinator is thinking...</p>
-                </div>
-            ) : (
-                <p className="text-xl md:text-2xl text-slate-100 font-medium max-w-lg animate-fade-in">
-                    {currentQuestion}
-                </p>
-            )}
-        </div>
+      {/* Voice Input Section */}
+      <div className="my-6 flex flex-col items-center justify-center space-y-3">
+          <button
+              onClick={toggleListening}
+              disabled={!isSpeechRecognitionSupported || isLoading || isSpeaking}
+              className={`relative w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed
+                  ${isListening ? 'bg-red-500 text-white shadow-lg shadow-red-500/40' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/40'}`}
+              aria-label={isListening ? 'Stop listening' : 'Start listening'}
+          >
+              <MicrophoneIcon className="w-8 h-8"/>
+              {isListening && <span className="absolute inset-0 rounded-full bg-white/30 animate-ping"></span>}
+          </button>
+          <p className="text-sm text-gray-500 dark:text-gray-400 h-5 px-2">
+              {getMicStatusText()}
+          </p>
+      </div>
 
-        <div className="w-full">
-            <div className="w-full flex flex-wrap justify-center gap-2 sm:gap-4">
-                <AnswerButton onClick={() => handleAnswer('Yes')} disabled={isLoading}>Yes</AnswerButton>
-                <AnswerButton onClick={() => handleAnswer('No')} disabled={isLoading}>No</AnswerButton>
-                <AnswerButton onClick={() => handleAnswer('Probably')} disabled={isLoading}>Probably</AnswerButton>
-                <AnswerButton onClick={() => handleAnswer('Probably not')} disabled={isLoading}>Probably Not</AnswerButton>
-                <AnswerButton onClick={() => handleAnswer("Don't Know")} disabled={isLoading}>Don't Know</AnswerButton>
-            </div>
-            <div className="text-center mt-6">
-                 <button
-                    onClick={handleGoBack}
-                    disabled={!canGoBack || isLoading}
-                    className="font-display text-sm text-slate-400 hover:text-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                    &larr; Go back and change my answer
-                </button>
-            </div>
-        </div>
+
+      <div className="w-full flex flex-wrap justify-center gap-3 sm:gap-4">
+        <AnswerButton onClick={() => handleAnswer('Yes')} disabled={isLoading || isSpeaking} variant="primary">Yes</AnswerButton>
+        <AnswerButton onClick={() => handleAnswer('No')} disabled={isLoading || isSpeaking}>No</AnswerButton>
+        <AnswerButton onClick={() => handleAnswer("I don't know")} disabled={isLoading || isSpeaking}>I don't know</AnswerButton>
+      </div>
+
+      <div className="mt-8 text-center">
+        <button
+          onClick={onQuit}
+          disabled={isLoading || isSpeaking}
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Quit Diagnosis
+        </button>
+      </div>
     </div>
   );
 };
