@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { UserAnswer } from '../types';
 import { LoadingSpinner, MicrophoneIcon } from './icons';
 import { generateSpeech } from '../services/geminiService';
-import { playAudio } from '../utils/audio';
+import { playAudio, stopAudio } from '../utils/audio';
 
 // Fix: Add type definitions for the Web Speech API to resolve TypeScript errors.
 declare global {
@@ -108,6 +108,11 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
       };
       speakQuestion();
     }
+    
+    // Cleanup function to stop audio if component unmounts or question changes
+    return () => {
+        stopAudio();
+    };
   }, [currentQuestion, isLoading]);
 
   // Speech-to-Text setup
@@ -154,17 +159,21 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
 
       const processedTranscript = finalTranscript.trim().toLowerCase();
       if (processedTranscript) {
-        if (processedTranscript.includes('yes')) {
-            handleAnswer('Yes');
-            recognition.stop();
-        } else if (processedTranscript.includes('no') || processedTranscript.includes('nope')) {
-            handleAnswer('No');
-            recognition.stop();
-        } else if (processedTranscript.includes("don't know") || processedTranscript.includes("do not know")) {
-            handleAnswer("I don't know");
-            recognition.stop();
+        const affirmative = ['yes', 'yeah', 'yep', 'yup', 'correct', 'affirmative', 'sure'];
+        const negative = ['no', 'nope', 'nah', 'negative'];
+        const uncertain = ["don't know", "do not know", "not sure", "unsure", "no idea"];
+
+        if (affirmative.some(keyword => processedTranscript.includes(keyword))) {
+          handleAnswer('Yes');
+          recognition.stop();
+        } else if (negative.some(keyword => processedTranscript.includes(keyword))) {
+          handleAnswer('No');
+          recognition.stop();
+        } else if (uncertain.some(keyword => processedTranscript.includes(keyword))) {
+          handleAnswer("I don't know");
+          recognition.stop();
         } else {
-            setSpeechError(`"${finalTranscript}" is not a valid answer.`);
+          setSpeechError(`Sorry, I didn't understand "${finalTranscript}". Please say Yes, No, or I don't know.`);
         }
       }
     };
@@ -176,11 +185,26 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
     };
   }, [isSpeechRecognitionSupported, handleAnswer]);
 
+  const handleAnswerClick = (answer: UserAnswer) => {
+    if (isLoading) return;
+    stopAudio(); // Interrupt speech if it's playing
+    setIsSpeaking(false);
+    handleAnswer(answer);
+  };
+
+  const handleQuitClick = () => {
+    stopAudio();
+    setIsSpeaking(false);
+    onQuit();
+  };
+
   const toggleListening = () => {
-    if (isLoading || isSpeaking || !recognitionRef.current) return;
+    if (isLoading || !recognitionRef.current) return;
     if (isListening) {
       recognitionRef.current.stop();
     } else {
+      stopAudio(); // Stop TTS before starting recognition
+      setIsSpeaking(false);
       recognitionRef.current.start();
     }
   };
@@ -212,7 +236,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
       <div className="my-6 flex flex-col items-center justify-center space-y-3">
           <button
               onClick={toggleListening}
-              disabled={!isSpeechRecognitionSupported || isLoading || isSpeaking}
+              disabled={!isSpeechRecognitionSupported || isLoading}
               className={`relative w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed
                   ${isListening ? 'bg-red-500 text-white shadow-lg shadow-red-500/40' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/40'}`}
               aria-label={isListening ? 'Stop listening' : 'Start listening'}
@@ -227,15 +251,15 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
 
 
       <div className="w-full flex flex-wrap justify-center gap-3 sm:gap-4">
-        <AnswerButton onClick={() => handleAnswer('Yes')} disabled={isLoading || isSpeaking} variant="primary">Yes</AnswerButton>
-        <AnswerButton onClick={() => handleAnswer('No')} disabled={isLoading || isSpeaking}>No</AnswerButton>
-        <AnswerButton onClick={() => handleAnswer("I don't know")} disabled={isLoading || isSpeaking}>I don't know</AnswerButton>
+        <AnswerButton onClick={() => handleAnswerClick('Yes')} disabled={isLoading} variant="primary">Yes</AnswerButton>
+        <AnswerButton onClick={() => handleAnswerClick('No')} disabled={isLoading}>No</AnswerButton>
+        <AnswerButton onClick={() => handleAnswerClick("I don't know")} disabled={isLoading}>I don't know</AnswerButton>
       </div>
 
       <div className="mt-8 text-center">
         <button
-          onClick={onQuit}
-          disabled={isLoading || isSpeaking}
+          onClick={handleQuitClick}
+          disabled={isLoading}
           className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Quit Diagnosis

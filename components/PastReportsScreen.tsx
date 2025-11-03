@@ -77,11 +77,12 @@ const ReportDetailView: React.FC<{ report: Report; onBack: () => void }> = ({ re
                 <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-8 mb-4">Full Conversation</h3>
                 <div className="space-y-4">
                     {report.history
+                      .slice(0, -2)
                       .filter(turn => turn.parts[0].text !== "Let's begin. Ask me the first question about my symptoms.")
                       .map((turn, index) => {
                         if (turn.role === 'user' && turn.parts[0].text) {
                             return (
-                                <div key={index} className="flex justify-end">
+                                <div key={index} className="flex justify-end animate-slide-in-right">
                                     <div className="bg-emerald-600 text-white p-3 rounded-2xl rounded-br-lg max-w-xs sm:max-w-sm shadow">
                                         <p className="font-semibold text-sm">You</p>
                                         <p>{turn.parts[0].text}</p>
@@ -93,7 +94,7 @@ const ReportDetailView: React.FC<{ report: Report; onBack: () => void }> = ({ re
                             const response = parseModelResponse(turn);
                             if (response?.type === 'question') {
                                 return (
-                                    <div key={index} className="flex justify-start">
+                                    <div key={index} className="flex justify-start animate-slide-in-left">
                                         <div className="bg-gray-200 dark:bg-gray-700 p-3 rounded-2xl rounded-bl-lg max-w-xs sm:max-w-sm shadow">
                                             <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">Healthkinator</p>
                                             <p className="text-gray-700 dark:text-gray-200">{response.text}</p>

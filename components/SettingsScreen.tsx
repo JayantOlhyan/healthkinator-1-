@@ -11,7 +11,7 @@ interface SettingsScreenProps {
     setTheme: (theme: 'light' | 'dark') => void;
 }
 
-const AVATAR_OPTIONS: AvatarId[] = ['default', 'avatar1', 'avatar2', 'avatar3'];
+const AVATAR_OPTIONS: AvatarId[] = ['default', 'avatar1', 'avatar2', 'avatar3', 'avatar4', 'avatar5', 'avatar6', 'avatar7'];
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileUpdate, onBack, onClearReports, theme, setTheme }) => {
     
@@ -64,7 +64,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileU
                         {/* Avatar Selection */}
                         <div>
                            <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Avatar</label>
-                           <div className="flex justify-around items-center">
+                           <div className="flex flex-wrap justify-center gap-x-4 gap-y-3">
                                 {AVATAR_OPTIONS.map(avatarId => (
                                     <button 
                                         key={avatarId}
@@ -72,7 +72,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileU
                                         className={`p-1 rounded-full transition-all duration-200 ${selectedAvatar === avatarId ? 'ring-2 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-700/50 ring-emerald-500' : 'hover:opacity-80'}`}
                                         aria-label={`Select avatar ${avatarId}`}
                                     >
-                                        <UserAvatarIcon avatar={avatarId} className="w-16 h-16" />
+                                        <UserAvatarIcon avatar={avatarId} className="w-14 h-14" />
                                     </button>
                                 ))}
                            </div>

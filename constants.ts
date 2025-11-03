@@ -16,6 +16,7 @@ Your task is to guide the user towards a probable diagnosis. Follow these rules 
     *   'condition' should be the name of the probable medical condition.
     *   'text' should be a brief report explaining the conclusion based on the symptoms and a strong, clear disclaimer. The disclaimer must state: "This is a preliminary assessment based on an AI model and is NOT a substitute for professional medical advice. Please consult a qualified healthcare provider for an accurate diagnosis and treatment."
     *   'confidence' should be a number between 0 and 100 representing your confidence level.
+    *   'suggestions' should be an array of 2-4 brief, actionable next steps or recommendations. Examples: "Rest and stay hydrated.", "Consider using over-the-counter pain relievers as directed.", "Schedule an appointment with a healthcare provider.". These should be non-prescriptive.
 `;
 
 
@@ -38,6 +39,13 @@ export const RESPONSE_SCHEMA = {
     confidence: {
       type: Type.NUMBER,
       description: "A confidence score from 0 to 100. ONLY included if 'type' is 'diagnosis'."
+    },
+    suggestions: {
+      type: Type.ARRAY,
+      description: "A list of actionable suggestions for the user. ONLY included if 'type' is 'diagnosis'.",
+      items: {
+        type: Type.STRING,
+      }
     }
   },
   required: ['type', 'text']

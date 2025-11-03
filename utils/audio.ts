@@ -38,12 +38,20 @@ const getAudioContext = (): AudioContext => {
     return audioContext;
 };
 
+// Keep track of the current audio source to allow for interruption
+let currentSource: AudioBufferSourceNode | null = null;
+
 // Main playback function
 export const playAudio = (base64Audio: string): Promise<void> => {
     return new Promise(async (resolve, reject) => {
         try {
+            // Stop any previously playing audio to prevent overlap
+            if (currentSource) {
+                currentSource.onended = null; // Remove old listener
+                currentSource.stop();
+            }
+            
             const ctx = getAudioContext();
-            // Resume context if it's suspended (e.g., due to browser autoplay policies)
             if (ctx.state === 'suspended') {
               await ctx.resume();
             }
@@ -52,16 +60,39 @@ export const playAudio = (base64Audio: string): Promise<void> => {
             const audioBuffer = await decodeAudioData(audioData, ctx, 24000, 1);
             
             const source = ctx.createBufferSource();
+            currentSource = source; // Track the new source
             source.buffer = audioBuffer;
             source.connect(ctx.destination);
             source.start();
 
             source.onended = () => {
+                if (currentSource === source) {
+                    currentSource = null; // Clear reference when done
+                }
                 resolve();
             };
         } catch (error) {
             console.error("Error playing audio:", error);
+            currentSource = null; // Clear on error too
             reject(error);
         }
     });
+};
+
+/**
+ * Explicitly stops any currently playing audio.
+ */
+export const stopAudio = (): void => {
+    if (currentSource) {
+        try {
+            currentSource.onended = null; // Prevent onended from firing (and resolving the promise)
+            currentSource.stop();
+        } catch (e) {
+            // This can throw if the source is not in a valid state to be stopped.
+            // It's generally safe to ignore.
+            console.warn("Could not stop audio source, it may have already finished.");
+        } finally {
+            currentSource = null;
+        }
+    }
 };

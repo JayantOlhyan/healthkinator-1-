@@ -62,6 +62,7 @@ const App: React.FC = () => {
           condition: response.condition,
           report: response.text,
           confidence: response.confidence,
+          suggestions: response.suggestions,
         };
         setDiagnosis(finalDiagnosis);
 

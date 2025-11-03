@@ -14,6 +14,7 @@ export interface Diagnosis {
   condition: string;
   report: string;
   confidence: number;
+  suggestions?: string[];
 }
 
 export interface GeminiResponse {
@@ -21,11 +22,12 @@ export interface GeminiResponse {
   text: string;
   condition?: string;
   confidence?: number;
+  suggestions?: string[];
 }
 
 export type UserAnswer = 'Yes' | 'No' | "I don't know";
 
-export type AvatarId = 'default' | 'avatar1' | 'avatar2' | 'avatar3';
+export type AvatarId = 'default' | 'avatar1' | 'avatar2' | 'avatar3' | 'avatar4' | 'avatar5' | 'avatar6' | 'avatar7';
 
 export interface UserProfile {
   name: string;

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Diagnosis } from '../types';
-import { ChevronRightIcon } from './icons';
+import { ChevronRightIcon, LightbulbIcon, ShareIcon } from './icons';
+import { generateSpeech } from '../services/geminiService';
+import { playAudio } from '../utils/audio';
 
 interface ResultCardProps {
   diagnosis: Diagnosis;
@@ -8,7 +10,42 @@ interface ResultCardProps {
 }
 
 const ResultCard: React.FC<ResultCardProps> = ({ diagnosis, onViewReports }) => {
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const confidence = diagnosis.confidence;
+  const isShareSupported = typeof navigator !== 'undefined' && 'share' in navigator;
+
+  useEffect(() => {
+    const speakDiagnosis = async () => {
+      setIsSpeaking(true);
+      try {
+        const textToSpeak = `The probable diagnosis is ${diagnosis.condition}, with a confidence of ${confidence} percent.`;
+        const base64Audio = await generateSpeech(textToSpeak);
+        await playAudio(base64Audio);
+      } catch (error) {
+        console.error("TTS for diagnosis failed", error);
+      } finally {
+        setIsSpeaking(false);
+      }
+    };
+
+    // Speak the diagnosis when the component is displayed with a valid condition
+    if (diagnosis.condition) {
+      speakDiagnosis();
+    }
+  }, [diagnosis, confidence]);
+
+  const handleShare = async () => {
+    if (!isShareSupported) return;
+
+    try {
+      await navigator.share({
+        title: 'Healthkinator Diagnosis',
+        text: `Healthkinator suggests a probable diagnosis of ${diagnosis.condition} with ${diagnosis.confidence}% confidence. This is a preliminary assessment and not a substitute for professional medical advice.`,
+      });
+    } catch (error) {
+      console.error('Error sharing diagnosis:', error);
+    }
+  };
 
   return (
     <div className="w-full mt-8 animate-fade-in">
@@ -25,13 +62,50 @@ const ResultCard: React.FC<ResultCardProps> = ({ diagnosis, onViewReports }) => 
             <p className="text-sm text-emerald-600 dark:text-emerald-400">Condition probability</p>
         </div>
 
+        {diagnosis.suggestions && diagnosis.suggestions.length > 0 && (
+            <div className="mb-6">
+                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                    <LightbulbIcon className="w-6 h-6 mr-3 text-emerald-500" />
+                    Recommendations
+                </h3>
+                <div className="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4">
+                    <ul className="space-y-3">
+                        {diagnosis.suggestions.map((suggestion, index) => (
+                            <li key={index} className="flex items-start">
+                                <div className="w-5 h-5 bg-emerald-500 rounded-full mr-3 mt-1 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
+                                    {index + 1}
+                                </div>
+                                <span className="text-gray-800 dark:text-gray-200">{suggestion}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+        )}
+
         <button
-            className="w-full font-bold bg-emerald-600 text-white py-4 px-8 rounded-2xl text-lg hover:bg-emerald-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/30"
+            disabled={isSpeaking}
+            className="w-full font-bold bg-emerald-600 text-white py-4 px-8 rounded-2xl text-lg hover:bg-emerald-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
         >
             Recommend Telemedicine
         </button>
+
+        {isShareSupported && (
+            <button 
+                onClick={handleShare}
+                disabled={isSpeaking}
+                className="w-full mt-4 flex justify-center items-center p-4 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <ShareIcon className="w-5 h-5 mr-3" />
+                <span className="font-bold text-gray-800 dark:text-gray-100">Share Diagnosis</span>
+            </button>
+        )}
+
         {onViewReports && (
-            <button onClick={onViewReports} className="w-full mt-4 flex justify-between items-center p-4 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <button 
+              onClick={onViewReports} 
+              disabled={isSpeaking}
+              className="w-full mt-4 flex justify-between items-center p-4 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 <span className="font-bold text-gray-800 dark:text-gray-100">Past Reports</span>
                 <ChevronRightIcon className="w-6 h-6 text-gray-400" />
             </button>
