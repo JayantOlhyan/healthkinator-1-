@@ -6,7 +6,7 @@ import ResultCard from './components/ResultScreen';
 import PastReportsScreen from './components/PastReportsScreen';
 import SettingsScreen from './components/SettingsScreen';
 import { Header } from './components/Layout';
-import { generateResponse } from './services/geminiService';
+import { generateResponse, generateSpeech } from './services/geminiService';
 import { getReports, saveReport, clearReports, getUserProfile, saveUserProfile } from './services/storageService';
 
 const App: React.FC = () => {
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<Content[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState('');
+  const [currentAudio, setCurrentAudio] = useState<string | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -79,6 +80,7 @@ const App: React.FC = () => {
   
   const handleError = (message: string) => {
       setError(message);
+      setIsLoading(false);
   };
 
   const startGame = async () => {
@@ -87,6 +89,7 @@ const App: React.FC = () => {
     setError(null);
     setHistory([]);
     setCurrentQuestion('');
+    setCurrentAudio(null);
     setIsLoading(true);
 
     const initialUserMessage: Content = { role: 'user', parts: [{ text: "Let's begin. Ask me the first question about my symptoms." }] };
@@ -94,6 +97,10 @@ const App: React.FC = () => {
 
     try {
       const response = await generateResponse([initialUserMessage]);
+      if (response.type === 'question') {
+          const audio = await generateSpeech(response.text);
+          setCurrentAudio(audio);
+      }
       processResponse(response, [initialUserMessage]);
     } catch (e) {
       handleError((e as Error).message);
@@ -106,12 +113,25 @@ const App: React.FC = () => {
     if (isLoading) return;
 
     setIsLoading(true);
+    setCurrentQuestion('');
+    setCurrentAudio(null);
+
     const userAnswer: Content = { role: 'user', parts: [{ text: answer }] };
     const newHistory = [...history, userAnswer];
     setHistory(newHistory);
 
     try {
       const response = await generateResponse(newHistory);
+      
+      if (response.type === 'question') {
+          const audio = await generateSpeech(response.text);
+          setCurrentAudio(audio);
+      } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
+          const textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+          const audio = await generateSpeech(textToSpeak);
+          setCurrentAudio(audio);
+      }
+
       processResponse(response, newHistory);
     } catch (e) {
       handleError((e as Error).message);
@@ -144,8 +164,9 @@ const App: React.FC = () => {
               isLoading={isLoading && !diagnosis}
               handleAnswer={handleAnswer}
               onQuit={showWelcomeScreen}
+              audioData={currentAudio}
             />
-            {diagnosis && <ResultCard diagnosis={diagnosis} onViewReports={showPastReports} />}
+            {diagnosis && <ResultCard diagnosis={diagnosis} onViewReports={showPastReports} audioData={currentAudio} />}
             {error && (
                 <div className="mt-4 text-center text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 p-4 rounded-lg">
                     <strong>Error:</strong> {error}

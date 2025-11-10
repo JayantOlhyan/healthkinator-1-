@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserAnswer } from '../types';
 import { LoadingSpinner, MicrophoneIcon } from './icons';
-import { generateSpeech } from '../services/geminiService';
 import { playAudio, stopAudio } from '../utils/audio';
 
 // Fix: Add type definitions for the Web Speech API to resolve TypeScript errors.
@@ -66,6 +65,7 @@ interface GameScreenProps {
   isLoading: boolean;
   handleAnswer: (answer: UserAnswer) => void;
   onQuit: () => void;
+  audioData: string | null;
 }
 
 const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, disabled: boolean, variant?: 'primary' | 'secondary' }> = ({ onClick, children, disabled, variant = 'secondary' }) => {
@@ -83,7 +83,7 @@ const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, d
     );
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, handleAnswer, onQuit }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, handleAnswer, onQuit, audioData }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -92,39 +92,39 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
 
   const isSpeechRecognitionSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-  // Text-to-Speech for new questions
+  // Play audio when it's passed down as a prop
   useEffect(() => {
-    if (currentQuestion && !isLoading) {
-      const speakQuestion = async () => {
+    if (audioData) {
+      const play = async () => {
         setIsSpeaking(true);
         try {
-          const base64Audio = await generateSpeech(currentQuestion);
-          await playAudio(base64Audio);
+          await playAudio(audioData);
         } catch (error) {
-          console.error("TTS failed", error);
+          console.error("Audio playback failed", error);
         } finally {
           setIsSpeaking(false);
         }
       };
-      speakQuestion();
+      play();
     }
     
-    // Cleanup function to stop audio if component unmounts or question changes
+    // Cleanup function to stop audio if component unmounts or audio changes
     return () => {
         stopAudio();
     };
-  }, [currentQuestion, isLoading]);
+  }, [audioData]);
 
   // Speech-to-Text setup
   useEffect(() => {
     if (!isSpeechRecognitionSupported) return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognitionAPI();
     const recognition = recognitionRef.current;
     
     recognition.continuous = false;
     recognition.interimResults = true;
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -147,32 +147,49 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
     recognition.onresult = (event) => {
       let interimTranscript = '';
       let finalTranscript = '';
+      let finalConfidence = 0;
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
-          } else {
-              interimTranscript += event.results[i][0].transcript;
-          }
+        const result = event.results[i];
+        const alternative = result[0];
+        if (result.isFinal) {
+          finalTranscript += alternative.transcript;
+          finalConfidence = alternative.confidence;
+        } else {
+          interimTranscript += alternative.transcript;
+        }
       }
-      setTranscript(interimTranscript);
+      setTranscript(interimTranscript || finalTranscript);
 
-      const processedTranscript = finalTranscript.trim().toLowerCase();
+      const processedTranscript = finalTranscript.trim();
       if (processedTranscript) {
-        const affirmative = ['yes', 'yeah', 'yep', 'yup', 'correct', 'affirmative', 'sure'];
-        const negative = ['no', 'nope', 'nah', 'negative'];
+        const CONFIDENCE_THRESHOLD = 0.4;
+        
+        if (finalConfidence < CONFIDENCE_THRESHOLD) {
+          setSpeechError("I'm not quite sure what you said. Could you please speak a bit more clearly?");
+          return;
+        }
+
+        // Use regex for more robust matching of whole words and add more phrases
+        const affirmative = ['yes', 'yeah', 'yep', 'yup', 'correct', 'affirmative', 'sure', 'i guess so', 'i think so', 'sounds right'];
+        const negative = ['no', 'nope', 'nah', 'negative', "i don't think so", "not really"];
         const uncertain = ["don't know", "do not know", "not sure", "unsure", "no idea"];
 
-        if (affirmative.some(keyword => processedTranscript.includes(keyword))) {
+        const affirmativeRegex = new RegExp(`\\b(${affirmative.join('|')})\\b`, 'i');
+        const negativeRegex = new RegExp(`\\b(${negative.join('|')})\\b`, 'i');
+        const uncertainRegex = new RegExp(`\\b(${uncertain.join('|')})\\b`, 'i');
+
+        if (affirmativeRegex.test(processedTranscript)) {
           handleAnswer('Yes');
           recognition.stop();
-        } else if (negative.some(keyword => processedTranscript.includes(keyword))) {
+        } else if (negativeRegex.test(processedTranscript)) {
           handleAnswer('No');
           recognition.stop();
-        } else if (uncertain.some(keyword => processedTranscript.includes(keyword))) {
+        } else if (uncertainRegex.test(processedTranscript)) {
           handleAnswer("I don't know");
           recognition.stop();
         } else {
+          // Only show error for final, misunderstood transcripts
           setSpeechError(`Sorry, I didn't understand "${finalTranscript}". Please say Yes, No, or I don't know.`);
         }
       }

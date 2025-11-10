@@ -57,7 +57,7 @@ export const generateSpeech = async (text: string): Promise<string> => {
   try {
     const response = await aiInstance.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Say it clearly: ${text}` }] }],
+      contents: [{ parts: [{ text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {

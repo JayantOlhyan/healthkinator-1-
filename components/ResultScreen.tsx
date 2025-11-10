@@ -1,38 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { Diagnosis } from '../types';
 import { ChevronRightIcon, LightbulbIcon, ShareIcon } from './icons';
-import { generateSpeech } from '../services/geminiService';
 import { playAudio } from '../utils/audio';
 
 interface ResultCardProps {
   diagnosis: Diagnosis;
   onViewReports?: () => void;
+  audioData?: string | null;
 }
 
-const ResultCard: React.FC<ResultCardProps> = ({ diagnosis, onViewReports }) => {
+const ResultCard: React.FC<ResultCardProps> = ({ diagnosis, onViewReports, audioData }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const confidence = diagnosis.confidence;
   const isShareSupported = typeof navigator !== 'undefined' && 'share' in navigator;
 
   useEffect(() => {
-    const speakDiagnosis = async () => {
-      setIsSpeaking(true);
-      try {
-        const textToSpeak = `The probable diagnosis is ${diagnosis.condition}, with a confidence of ${confidence} percent.`;
-        const base64Audio = await generateSpeech(textToSpeak);
-        await playAudio(base64Audio);
-      } catch (error) {
-        console.error("TTS for diagnosis failed", error);
-      } finally {
-        setIsSpeaking(false);
-      }
-    };
-
-    // Speak the diagnosis when the component is displayed with a valid condition
-    if (diagnosis.condition) {
+    if (audioData) {
+      const speakDiagnosis = async () => {
+        setIsSpeaking(true);
+        try {
+          await playAudio(audioData);
+        } catch (error) {
+          console.error("TTS for diagnosis failed", error);
+        } finally {
+          setIsSpeaking(false);
+        }
+      };
       speakDiagnosis();
     }
-  }, [diagnosis, confidence]);
+  }, [audioData]);
 
   const handleShare = async () => {
     if (!isShareSupported) return;
