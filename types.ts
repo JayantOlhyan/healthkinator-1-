@@ -1,7 +1,8 @@
-// Fix: Re-export 'Content' type to resolve import error in other components.
-// Fix: Correctly import and re-export `Content` type to make it available within this module.
-import type { Content } from '@google/genai';
-export type { Content };
+// Content type definition (previously imported from @google/genai)
+export interface Content {
+  role: string;
+  parts: { text: string }[];
+}
 
 export enum GameState {
   Welcome,
