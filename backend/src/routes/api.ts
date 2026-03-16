@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { generateResponse, generateSpeech } from '../services/geminiService';
+import { getReports, saveReport, clearReports, getUserProfile, saveUserProfile } from '../services/storageService';
 
 export const apiRouter = Router();
 
@@ -7,6 +8,10 @@ export const apiRouter = Router();
 apiRouter.get('/status', (_req: Request, res: Response) => {
   res.json({ status: 'Healthkinator API is running' });
 });
+
+// ──────────────────────────────────────────────
+// AI Endpoints
+// ──────────────────────────────────────────────
 
 // Chat endpoint — proxies symptom questions to Gemini
 apiRouter.post('/chat', async (req: Request, res: Response) => {
@@ -43,5 +48,82 @@ apiRouter.post('/speech', async (req: Request, res: Response) => {
     console.error('Error in /api/speech:', error);
     const message = error instanceof Error ? error.message : 'An unknown error occurred';
     res.status(500).json({ error: message });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Reports Endpoints
+// ──────────────────────────────────────────────
+
+// Get all reports
+apiRouter.get('/reports', (_req: Request, res: Response) => {
+  try {
+    const reports = getReports();
+    res.json(reports);
+  } catch (error) {
+    console.error('Error in GET /api/reports:', error);
+    res.status(500).json({ error: 'Failed to retrieve reports' });
+  }
+});
+
+// Save a new report
+apiRouter.post('/reports', (req: Request, res: Response) => {
+  try {
+    const report = req.body;
+
+    if (!report || !report.id || !report.diagnosis) {
+      res.status(400).json({ error: 'Invalid report data' });
+      return;
+    }
+
+    saveReport(report);
+    res.status(201).json({ message: 'Report saved successfully' });
+  } catch (error) {
+    console.error('Error in POST /api/reports:', error);
+    res.status(500).json({ error: 'Failed to save report' });
+  }
+});
+
+// Clear all reports
+apiRouter.delete('/reports', (_req: Request, res: Response) => {
+  try {
+    clearReports();
+    res.json({ message: 'All reports cleared' });
+  } catch (error) {
+    console.error('Error in DELETE /api/reports:', error);
+    res.status(500).json({ error: 'Failed to clear reports' });
+  }
+});
+
+// ──────────────────────────────────────────────
+// Profile Endpoints
+// ──────────────────────────────────────────────
+
+// Get user profile
+apiRouter.get('/profile', (_req: Request, res: Response) => {
+  try {
+    const profile = getUserProfile();
+    res.json(profile);
+  } catch (error) {
+    console.error('Error in GET /api/profile:', error);
+    res.status(500).json({ error: 'Failed to retrieve profile' });
+  }
+});
+
+// Update user profile
+apiRouter.put('/profile', (req: Request, res: Response) => {
+  try {
+    const profile = req.body;
+
+    if (!profile || !profile.name) {
+      res.status(400).json({ error: 'Invalid profile data' });
+      return;
+    }
+
+    saveUserProfile(profile);
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error in PUT /api/profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
