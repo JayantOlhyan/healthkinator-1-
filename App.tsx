@@ -25,7 +25,7 @@ const App: React.FC = () => {
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => getUserProfile());
+  const [userProfile, setUserProfile] = useState<UserProfile>({ name: 'Guest', avatar: 'default' });
 
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<Content[]>([]);
@@ -39,20 +39,29 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Load reports and profile from backend on mount
   useEffect(() => {
-    setReports(getReports());
+    const loadData = async () => {
+      const [loadedReports, loadedProfile] = await Promise.all([
+        getReports(),
+        getUserProfile(),
+      ]);
+      setReports(loadedReports);
+      setUserProfile(loadedProfile);
+    };
+    loadData();
   }, []);
 
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
-  const handleProfileUpdate = (newProfile: UserProfile) => {
-    saveUserProfile(newProfile);
+  const handleProfileUpdate = async (newProfile: UserProfile) => {
+    await saveUserProfile(newProfile);
     setUserProfile(newProfile);
   };
 
-  const processResponse = useCallback((response: GeminiResponse, responseHistory: Content[]) => {
+  const processResponse = useCallback(async (response: GeminiResponse, responseHistory: Content[]) => {
     const modelResponse: Content = { role: 'model', parts: [{ text: JSON.stringify(response) }] };
     setHistory([...responseHistory, modelResponse]);
 
@@ -71,9 +80,9 @@ const App: React.FC = () => {
             id: new Date().toISOString(),
             date: new Date().toISOString(),
             diagnosis: finalDiagnosis,
-            history: responseHistory, // History *before* the model's diagnosis response
+            history: responseHistory,
         };
-        saveReport(newReport);
+        await saveReport(newReport);
         setReports(prev => [newReport, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     }
   }, []);
@@ -101,7 +110,7 @@ const App: React.FC = () => {
           const audio = await generateSpeech(response.text);
           setCurrentAudio(audio);
       }
-      processResponse(response, [initialUserMessage]);
+      await processResponse(response, [initialUserMessage]);
     } catch (e) {
       handleError((e as Error).message);
     } finally {
@@ -132,7 +141,7 @@ const App: React.FC = () => {
           setCurrentAudio(audio);
       }
 
-      processResponse(response, newHistory);
+      await processResponse(response, newHistory);
     } catch (e) {
       handleError((e as Error).message);
     } finally {
@@ -140,8 +149,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handleClearReports = () => {
-    clearReports();
+  const handleClearReports = async () => {
+    await clearReports();
     setReports([]);
   };
 

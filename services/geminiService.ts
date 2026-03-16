@@ -1,82 +1,38 @@
-import { GoogleGenAI, Modality } from "@google/genai";
-import { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA } from '../constants';
-// Fix: Consolidate type imports to use the central 'types.ts' file for better consistency.
 import { GeminiResponse, Content } from '../types';
 
-let ai: GoogleGenAI | null = null;
-
-const getAI = () => {
-    if (!ai) {
-        if (!process.env.API_KEY) {
-            throw new Error("API_KEY environment variable not set");
-        }
-        ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    }
-    return ai;
-};
+const API_BASE = '/api';
 
 export const generateResponse = async (history: Content[]): Promise<GeminiResponse> => {
-  const aiInstance = getAI();
-  try {
-    const response = await aiInstance.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: history,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: 'application/json',
-        responseSchema: RESPONSE_SCHEMA,
-      },
-    });
-    
-    const jsonString = response.text.trim();
+  const res = await fetch(`${API_BASE}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ history }),
+  });
 
-    // Basic validation to ensure it's a JSON string
-    if (!jsonString.startsWith('{') || !jsonString.endsWith('}')) {
-        throw new Error("Invalid JSON response from API");
-    }
-
-    const parsedResponse = JSON.parse(jsonString);
-    
-    // Validate required fields
-    if (!parsedResponse.type || !parsedResponse.text) {
-        throw new Error("Malformed JSON response: missing 'type' or 'text'");
-    }
-
-    return parsedResponse as GeminiResponse;
-  } catch (error) {
-    console.error("Error communicating with Gemini API:", error);
-    if (error instanceof Error) {
-        throw new Error(`Failed to get next step from AI: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred while communicating with the AI.");
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+    throw new Error(errorData.error || `Server error: ${res.status}`);
   }
+
+  const data = await res.json();
+  return data as GeminiResponse;
 };
 
 export const generateSpeech = async (text: string): Promise<string> => {
-  const aiInstance = getAI();
-  try {
-    const response = await aiInstance.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) {
-      throw new Error("No audio data received from API.");
-    }
-    return base64Audio;
-  } catch (error) {
-    console.error("Error generating speech:", error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to generate speech: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred while generating speech.");
+  const res = await fetch(`${API_BASE}/speech`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+    throw new Error(errorData.error || `Server error: ${res.status}`);
   }
+
+  const data = await res.json();
+  if (!data.audio) {
+    throw new Error('No audio data received from server');
+  }
+  return data.audio;
 };

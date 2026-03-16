@@ -1,58 +1,65 @@
 import { Report, UserProfile } from '../types';
 
-const REPORTS_KEY = 'healthkinator_reports';
-const PROFILE_KEY = 'healthkinator_profile';
+const API_BASE = '/api';
 
-export const getReports = (): Report[] => {
-  try {
-    const reportsJson = localStorage.getItem(REPORTS_KEY);
-    if (reportsJson) {
-      const reports = JSON.parse(reportsJson) as Report[];
-      // Sort by date, newest first
-      return reports.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }
-  } catch (error) {
-    console.error("Failed to parse reports from localStorage", error);
-  }
-  return [];
-};
+// ──────────────────────────────────────────────
+// Reports — persisted via backend API
+// ──────────────────────────────────────────────
 
-export const saveReport = (report: Report): void => {
-  const existingReports = getReports();
-  // Filter out any potential duplicates by ID before adding
-  const updatedReports = [report, ...existingReports.filter(r => r.id !== report.id)];
+export const getReports = async (): Promise<Report[]> => {
   try {
-    localStorage.setItem(REPORTS_KEY, JSON.stringify(updatedReports));
+    const res = await fetch(`${API_BASE}/reports`);
+    if (!res.ok) throw new Error('Failed to fetch reports');
+    return await res.json();
   } catch (error) {
-    console.error("Failed to save report to localStorage", error);
+    console.error('Failed to fetch reports:', error);
+    return [];
   }
 };
 
-export const clearReports = (): void => {
+export const saveReport = async (report: Report): Promise<void> => {
   try {
-    localStorage.removeItem(REPORTS_KEY);
+    await fetch(`${API_BASE}/reports`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+    });
   } catch (error) {
-    console.error("Failed to clear reports from localStorage", error);
+    console.error('Failed to save report:', error);
   }
 };
 
-export const getUserProfile = (): UserProfile => {
+export const clearReports = async (): Promise<void> => {
   try {
-    const profileJson = localStorage.getItem(PROFILE_KEY);
-    if (profileJson) {
-      return JSON.parse(profileJson) as UserProfile;
-    }
+    await fetch(`${API_BASE}/reports`, { method: 'DELETE' });
   } catch (error) {
-    console.error("Failed to parse profile from localStorage", error);
+    console.error('Failed to clear reports:', error);
   }
-  // Return default profile if none is found or parsing fails
-  return { name: 'Guest', avatar: 'default' };
 };
 
-export const saveUserProfile = (profile: UserProfile): void => {
+// ──────────────────────────────────────────────
+// User Profile — persisted via backend API
+// ──────────────────────────────────────────────
+
+export const getUserProfile = async (): Promise<UserProfile> => {
   try {
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    const res = await fetch(`${API_BASE}/profile`);
+    if (!res.ok) throw new Error('Failed to fetch profile');
+    return await res.json();
   } catch (error) {
-    console.error("Failed to save profile to localStorage", error);
+    console.error('Failed to fetch profile:', error);
+    return { name: 'Guest', avatar: 'default' };
+  }
+};
+
+export const saveUserProfile = async (profile: UserProfile): Promise<void> => {
+  try {
+    await fetch(`${API_BASE}/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+  } catch (error) {
+    console.error('Failed to save profile:', error);
   }
 };
