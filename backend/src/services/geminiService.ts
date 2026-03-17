@@ -38,7 +38,7 @@ const RESPONSE_SCHEMA = {
     },
     suggestions: {
       type: 'ARRAY' as const,
-      description: "A list of actionable suggestions for the user. ONLY included if 'type' is 'diagnosis'.",
+      description: "A comprehensive list of 5-8 actionable suggestions for the user. These should include lifestyle advice, home remedies, warning signs to watch for, and specific guidance on when to see a specialist.",
       items: {
         type: 'STRING' as const,
       }
