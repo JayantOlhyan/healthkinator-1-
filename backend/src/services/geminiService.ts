@@ -36,6 +36,10 @@ const RESPONSE_SCHEMA = {
       type: 'NUMBER' as const,
       description: "A confidence score from 0 to 100. ONLY included if 'type' is 'diagnosis'."
     },
+    analysis: {
+      type: 'STRING' as const,
+      description: "A brief technical explanation of why this diagnosis was chosen based on the symptoms provided (e.g., 'The combination of high fever and neck stiffness is highly suggestive of...')."
+    },
     suggestions: {
       type: 'ARRAY' as const,
       description: "A comprehensive list of 5-8 actionable suggestions for the user. These should include lifestyle advice, home remedies, warning signs to watch for, and specific guidance on when to see a specialist.",
@@ -52,6 +56,7 @@ interface GeminiResponse {
   text: string;
   condition?: string;
   confidence?: number;
+  analysis?: string;
   suggestions?: string[];
 }
 
