@@ -17,6 +17,7 @@ export interface Diagnosis {
   report: string;
   confidence: number;
   suggestions?: string[];
+  analysis?: string;
 }
 
 export interface GeminiResponse {
@@ -25,6 +26,7 @@ export interface GeminiResponse {
   condition?: string;
   confidence?: number;
   suggestions?: string[];
+  analysis?: string;
 }
 
 export type UserAnswer = 'Yes' | 'No' | "I don't know";
