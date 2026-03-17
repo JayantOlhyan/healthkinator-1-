@@ -30,22 +30,17 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
       : 'Rest and observe symptoms';
 
   return (
-    <div className="flex flex-col items-center justify-between h-full w-full p-6 animate-fade-in text-white relative">
+    <div className="flex flex-col items-center h-full w-full p-6 animate-fade-in text-white relative overflow-y-auto hide-scrollbar pb-10">
       
       {/* Top Section */}
-      <div className="flex flex-col items-center mt-4 mb-6 z-10 w-full">
-        {/* Small avatar with orange glow */}
-        <div className="w-20 h-20 rounded-full border-2 border-brand-orange p-1 glow-orange-border mb-4 overflow-hidden relative">
-            <div className="absolute inset-0 bg-brand-orange/10 rounded-full"></div>
-            <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover rounded-full mix-blend-screen" />
-        </div>
+      <div className="flex flex-col items-center mt-4 mb-6 z-10 w-full flex-shrink-0">
         <h1 className="text-3xl font-extrabold text-white tracking-wide">
           I think I know!
         </h1>
       </div>
 
       {/* Main Result Card */}
-      <div className="w-full max-w-sm rounded-[2rem] border-[3px] border-brand-emerald bg-[#0F292B]/80 text-white p-6 shadow-xl glow-emerald-strong relative z-10">
+      <div className="w-full max-w-sm rounded-[2rem] border-[3px] border-brand-emerald bg-[#0F292B]/80 text-white p-6 shadow-xl glow-emerald-strong relative z-10 mb-8 flex-shrink-0">
           
           {/* Header row in card */}
           <div className="flex justify-between items-start mb-6 border-b border-brand-emerald/30 pb-4">
@@ -95,21 +90,44 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
           </div>
       </div>
 
+      {/* Doctor Connection Section */}
+      <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-3xl p-6 mb-8 z-10 flex-shrink-0">
+          <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full border border-brand-orange p-1 overflow-hidden bg-brand-navy">
+                  <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover rounded-full" />
+              </div>
+              <div>
+                  <h3 className="font-bold text-white">Need professional help?</h3>
+                  <p className="text-xs text-gray-400">Connect with Apollo 24/7 doctors instantly</p>
+              </div>
+          </div>
+          <button
+            onClick={() => (window.location.href = 'https://www.apollo247.com/doctors')}
+            className="w-full font-bold bg-brand-orange text-white py-3 px-6 rounded-2xl text-base hover:bg-[#ff8a3d] transition-all duration-300 shadow-lg shadow-brand-orange/20 glow-orange"
+          >
+            Contact Apollo 24/7 Doctor
+          </button>
+      </div>
+
       {/* Bottom Actions */}
-      <div className="w-full max-w-sm flex flex-col gap-4 mt-10 mb-2 z-10">
+      <div className="w-full max-w-sm flex flex-col gap-4 z-10 flex-shrink-0">
         <button
           onClick={onViewReports}
           className="w-full font-bold bg-[#143632] border border-brand-emerald text-brand-emerald py-4 px-6 rounded-2xl text-lg hover:bg-[#1A4541] transition-all duration-300 shadow-lg"
         >
           View Full Report
         </button>
-        <button
-          className="w-full font-bold bg-brand-orange text-white py-4 px-6 rounded-2xl text-lg hover:bg-[#ff8a3d] transition-all duration-300 shadow-lg shadow-brand-orange/20 glow-orange"
-        >
-          Connect to Doctor
-        </button>
       </div>
 
+      <style dangerouslySetInnerHTML={{__html: `
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+      `}} />
     </div>
   );
 };

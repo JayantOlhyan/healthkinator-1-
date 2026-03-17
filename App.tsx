@@ -178,16 +178,24 @@ const App: React.FC = () => {
     switch (gameState) {
       case GameState.Playing:
         return (
-          <div className="p-6 flex flex-col flex-grow">
-            <GameScreen 
-              currentQuestion={currentQuestion}
-              isLoading={isLoading && !diagnosis}
-              handleAnswer={handleAnswer}
-              onQuit={showWelcomeScreen}
-              audioData={currentAudio}
-              history={history}
-            />
-            {diagnosis && <ResultCard diagnosis={diagnosis} onViewReports={showPastReports} onConnectDoctor={showConnectDoctorScreen} audioData={currentAudio} />}
+          <div className="p-6 flex flex-grow overflow-hidden">
+            {!diagnosis ? (
+              <GameScreen 
+                currentQuestion={currentQuestion}
+                isLoading={isLoading}
+                handleAnswer={handleAnswer}
+                onQuit={showWelcomeScreen}
+                audioData={currentAudio}
+                history={history}
+              />
+            ) : (
+              <ResultCard 
+                diagnosis={diagnosis} 
+                onViewReports={showPastReports} 
+                onConnectDoctor={showConnectDoctorScreen} 
+                audioData={currentAudio} 
+              />
+            )}
             {error && (
                 <div className="mt-4 text-center text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 p-4 rounded-lg">
                     <strong>Error:</strong> {error}
