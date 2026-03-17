@@ -73,14 +73,27 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
                       <span className="font-bold text-brand-emerald">{severity}</span>
                   </div>
               </div>
+              
               <div className="flex items-start">
                   <span className="text-2xl mr-4 opacity-80 mt-1">🛏️</span>
-                  <div>
-                      <span className="text-gray-300 text-sm">Recommended Action:<br/></span>
-                      <span className="font-bold text-white leading-tight block mt-1">{recommendation}</span>
+                  <div className="flex-1">
+                      <span className="text-gray-300 text-sm mb-2 block">Recommended Actions:</span>
+                      <ul className="space-y-2">
+                        {diagnosis.suggestions && diagnosis.suggestions.length > 0 ? (
+                          diagnosis.suggestions.map((sug, idx) => (
+                            <li key={idx} className="flex gap-2 text-sm">
+                              <span className="text-brand-emerald shrink-0">•</span>
+                              <span className="text-white font-medium leading-tight">{sug}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-white font-medium italic opacity-70">No specific recommendations provided.</li>
+                        )}
+                      </ul>
                   </div>
               </div>
-              <div className="flex items-center">
+
+              <div className="flex items-center pt-2 border-t border-brand-emerald/10">
                   <span className="text-2xl mr-4 opacity-80">👨‍⚕️</span>
                   <div>
                       <span className="text-gray-300 text-sm">Doctor Visit Urgency: </span>
