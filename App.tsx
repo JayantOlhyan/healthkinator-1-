@@ -110,13 +110,20 @@ const App: React.FC = () => {
 
     try {
       const response = await generateResponse([initialUserMessage]);
-      try {
-        const audio = await generateSpeech(response.text);
-        setCurrentAudio(audio);
-      } catch (audioError) {
-        console.warn("Speech generation failed, continuing with text only", audioError);
-      }
+      
+      // Process text response immediately
       await processResponse(response, [initialUserMessage]);
+
+      // Fetch speech in parallel
+      (async () => {
+        try {
+          const audio = await generateSpeech(response.text);
+          setCurrentAudio(audio);
+        } catch (audioError) {
+          console.warn("Speech generation failed, continuing with text only", audioError);
+        }
+      })();
+
     } catch (e) {
       handleError((e as Error).message);
     } finally {
@@ -138,20 +145,28 @@ const App: React.FC = () => {
     try {
       const response = await generateResponse(newHistory);
       
-      try {
-        if (response.type === 'question') {
-            const audio = await generateSpeech(response.text);
-            setCurrentAudio(audio);
-        } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
-            const textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+      // Update UI text immediately for better responsiveness
+      await processResponse(response, newHistory);
+      
+      // Fetch audio in parallel without blocking the UI update
+      (async () => {
+        try {
+          let textToSpeak = '';
+          if (response.type === 'question') {
+              textToSpeak = response.text;
+          } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
+              textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+          }
+          
+          if (textToSpeak) {
             const audio = await generateSpeech(textToSpeak);
             setCurrentAudio(audio);
+          }
+        } catch (audioError) {
+          console.warn("Speech generation failed, continuing with text only", audioError);
         }
-      } catch (audioError) {
-        console.warn("Speech generation failed, continuing with text only", audioError);
-      }
+      })();
 
-      await processResponse(response, newHistory);
     } catch (e) {
       handleError((e as Error).message);
     } finally {
