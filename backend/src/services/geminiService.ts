@@ -76,7 +76,7 @@ export const generateResponse = async (history: Content[]): Promise<GeminiRespon
   const aiInstance = getAI();
   
   const response = await aiInstance.models.generateContent({
-    model: 'gemini-flash-latest',
+    model: 'gemini-2.0-flash',
     contents: history,
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
@@ -98,11 +98,29 @@ export const generateResponse = async (history: Content[]): Promise<GeminiRespon
   return parsed as GeminiResponse;
 };
 
+// Faster combined function to avoid multiple round-trips from client
+export const generateCombinedResponse = async (history: Content[]): Promise<GeminiResponse & { audio?: string }> => {
+  const response = await generateResponse(history);
+  
+  try {
+    let textToSpeak = response.text;
+    if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
+      textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+    }
+    
+    const audio = await generateSpeech(textToSpeak);
+    return { ...response, audio };
+  } catch (e) {
+    console.warn('Combined speech generation failed:', e);
+    return response;
+  }
+};
+
 export const generateSpeech = async (text: string): Promise<string> => {
   const aiInstance = getAI();
 
   const response = await aiInstance.models.generateContent({
-    model: 'gemini-2.5-flash-preview-tts',
+    model: 'gemini-2.0-flash', // Also use 2.0-flash for TTS if supported or faster
     contents: [{ parts: [{ text }] }],
     config: {
       responseModalities: [Modality.AUDIO],
