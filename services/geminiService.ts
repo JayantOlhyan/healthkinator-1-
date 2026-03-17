@@ -2,7 +2,7 @@ import { GeminiResponse, Content } from '../types';
 
 const API_BASE = '/api';
 
-export const generateResponse = async (history: Content[]): Promise<GeminiResponse> => {
+export const generateResponse = async (history: Content[]): Promise<GeminiResponse & { audio?: string }> => {
   const res = await fetch(`${API_BASE}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -15,7 +15,7 @@ export const generateResponse = async (history: Content[]): Promise<GeminiRespon
   }
 
   const data = await res.json();
-  return data as GeminiResponse;
+  return data;
 };
 
 export const generateSpeech = async (text: string): Promise<string> => {

@@ -114,15 +114,19 @@ const App: React.FC = () => {
       // Process text response immediately
       await processResponse(response, [initialUserMessage]);
 
-      // Fetch speech in parallel
-      (async () => {
-        try {
-          const audio = await generateSpeech(response.text);
-          setCurrentAudio(audio);
-        } catch (audioError) {
-          console.warn("Speech generation failed, continuing with text only", audioError);
-        }
-      })();
+      // Use combined audio if available, otherwise fetch in parallel
+      if (response.audio) {
+        setCurrentAudio(response.audio);
+      } else {
+        (async () => {
+          try {
+            const audio = await generateSpeech(response.text);
+            setCurrentAudio(audio);
+          } catch (audioError) {
+            console.warn("Speech generation failed, continuing with text only", audioError);
+          }
+        })();
+      }
 
     } catch (e) {
       handleError((e as Error).message);
@@ -148,24 +152,28 @@ const App: React.FC = () => {
       // Update UI text immediately for better responsiveness
       await processResponse(response, newHistory);
       
-      // Fetch audio in parallel without blocking the UI update
-      (async () => {
-        try {
-          let textToSpeak = '';
-          if (response.type === 'question') {
-              textToSpeak = response.text;
-          } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
-              textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+      // Use combined audio if available, otherwise fetch in parallel
+      if (response.audio) {
+        setCurrentAudio(response.audio);
+      } else {
+        (async () => {
+          try {
+            let textToSpeak = '';
+            if (response.type === 'question') {
+                textToSpeak = response.text;
+            } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
+                textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+            }
+            
+            if (textToSpeak) {
+              const audio = await generateSpeech(textToSpeak);
+              setCurrentAudio(audio);
+            }
+          } catch (audioError) {
+            console.warn("Speech generation failed, continuing with text only", audioError);
           }
-          
-          if (textToSpeak) {
-            const audio = await generateSpeech(textToSpeak);
-            setCurrentAudio(audio);
-          }
-        } catch (audioError) {
-          console.warn("Speech generation failed, continuing with text only", audioError);
-        }
-      })();
+        })();
+      }
 
     } catch (e) {
       handleError((e as Error).message);

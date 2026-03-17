@@ -13,7 +13,7 @@ apiRouter.get('/status', (_req: Request, res: Response) => {
 // AI Endpoints
 // ──────────────────────────────────────────────
 
-// Chat endpoint — proxies symptom questions to Gemini
+// Chat endpoint — proxies symptom questions to Gemini (now with combined audio)
 apiRouter.post('/chat', async (req: Request, res: Response) => {
   try {
     const { history } = req.body;
@@ -23,7 +23,8 @@ apiRouter.post('/chat', async (req: Request, res: Response) => {
       return;
     }
 
-    const response = await generateResponse(history);
+    const { generateCombinedResponse } = await import('../services/geminiService');
+    const response = await generateCombinedResponse(history);
     res.json(response);
   } catch (error) {
     console.error('Error in /api/chat:', error);
