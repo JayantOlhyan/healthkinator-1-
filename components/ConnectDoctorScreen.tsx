@@ -32,7 +32,8 @@ const ConnectDoctorScreen: React.FC<ConnectDoctorScreenProps> = ({ onBack }) => 
     setConnecting(true);
     // Mock connection delay
     setTimeout(() => {
-        alert(`Successfully connected to Apollo 24/7 backend. Requesting video consultation with ${selectedDoctor.name}...`);
+        alert(`Successfully connected to Apollo 24/7. Redirecting to video consultation with ${selectedDoctor.name}...`);
+        window.location.href = 'https://www.apollo247.com/doctors';
         setConnecting(false);
     }, 1500);
   };
