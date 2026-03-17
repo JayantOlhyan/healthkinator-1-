@@ -9,6 +9,7 @@ export enum GameState {
   Playing,
   PastReports,
   Settings,
+  ConnectDoctor,
 }
 
 export interface Diagnosis {

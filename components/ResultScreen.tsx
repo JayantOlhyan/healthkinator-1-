@@ -1,113 +1,117 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Diagnosis } from '../types';
-import { ChevronRightIcon, LightbulbIcon, ShareIcon } from './icons';
-import { playAudio } from '../utils/audio';
 
-interface ResultCardProps {
+interface ResultScreenProps {
   diagnosis: Diagnosis;
-  onViewReports?: () => void;
-  audioData?: string | null;
+  onViewReports: () => void;
+  audioData: string | null;
 }
 
-const ResultCard: React.FC<ResultCardProps> = ({ diagnosis, onViewReports, audioData }) => {
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const confidence = diagnosis.confidence;
-  const isShareSupported = typeof navigator !== 'undefined' && 'share' in navigator;
+const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports }) => {
+  // Infer mock severity and urgency from confidence
+  let severity = 'Moderate';
+  let urgency = 'Medium';
+  let urgencyColor = 'bg-yellow-500/20 text-yellow-400';
 
-  useEffect(() => {
-    if (audioData) {
-      const speakDiagnosis = async () => {
-        setIsSpeaking(true);
-        try {
-          await playAudio(audioData);
-        } catch (error) {
-          console.error("TTS for diagnosis failed", error);
-        } finally {
-          setIsSpeaking(false);
-        }
-      };
-      speakDiagnosis();
-    }
-  }, [audioData]);
+  if (diagnosis.confidence > 80) {
+    severity = 'Mild';
+    urgency = 'Low';
+    urgencyColor = 'bg-brand-emerald/20 text-brand-emerald';
+  } else if (diagnosis.confidence < 50) {
+    severity = 'Severe';
+    urgency = 'High';
+    urgencyColor = 'bg-red-500/20 text-red-400';
+  }
 
-  const handleShare = async () => {
-    if (!isShareSupported) return;
-
-    try {
-      await navigator.share({
-        title: 'Healthkinator Diagnosis',
-        text: `Healthkinator suggests a probable diagnosis of ${diagnosis.condition} with ${diagnosis.confidence}% confidence. This is a preliminary assessment and not a substitute for professional medical advice.`,
-      });
-    } catch (error) {
-      console.error('Error sharing diagnosis:', error);
-    }
-  };
+  // The backend might not parse these perfectly (it just returns textual suggestions)
+  // We'll map the first suggestion to "Recommended Action"
+  const recommendation = diagnosis.suggestions && diagnosis.suggestions.length > 0 
+      ? diagnosis.suggestions[0] 
+      : 'Rest and observe symptoms';
 
   return (
-    <div className="w-full mt-8 animate-fade-in">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4">Result</h2>
-        <div className="bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-800 rounded-2xl p-6 mb-6">
-            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Probable Diagnosis</p>
-            <div className="flex justify-between items-center my-1">
-                <h3 className="text-3xl font-bold text-emerald-900 dark:text-emerald-100">{diagnosis.condition}</h3>
-                <span className={`text-2xl font-bold text-emerald-900 dark:text-emerald-100`}>{confidence}%</span>
-            </div>
-            <div className="w-full bg-emerald-200 dark:bg-emerald-900 rounded-full h-2.5 my-3">
-                <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: `${confidence}%` }}></div>
-            </div>
-            <p className="text-sm text-emerald-600 dark:text-emerald-400">Condition probability</p>
+    <div className="flex flex-col items-center justify-between h-full w-full p-6 animate-fade-in text-white relative">
+      
+      {/* Top Section */}
+      <div className="flex flex-col items-center mt-4 mb-6 z-10 w-full">
+        {/* Small avatar with orange glow */}
+        <div className="w-20 h-20 rounded-full border-2 border-brand-orange p-1 glow-orange-border mb-4 overflow-hidden relative">
+            <div className="absolute inset-0 bg-brand-orange/10 rounded-full"></div>
+            <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover rounded-full mix-blend-screen" />
         </div>
+        <h1 className="text-3xl font-extrabold text-white tracking-wide">
+          I think I know!
+        </h1>
+      </div>
 
-        {diagnosis.suggestions && diagnosis.suggestions.length > 0 && (
-            <div className="mb-6">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
-                    <LightbulbIcon className="w-6 h-6 mr-3 text-emerald-500" />
-                    Recommendations
-                </h3>
-                <div className="bg-gray-100 dark:bg-gray-700/50 rounded-xl p-4">
-                    <ul className="space-y-3">
-                        {diagnosis.suggestions.map((suggestion, index) => (
-                            <li key={index} className="flex items-start">
-                                <div className="w-5 h-5 bg-emerald-500 rounded-full mr-3 mt-1 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">
-                                    {index + 1}
-                                </div>
-                                <span className="text-gray-800 dark:text-gray-200">{suggestion}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-        )}
+      {/* Main Result Card */}
+      <div className="w-full max-w-sm rounded-[2rem] border-[3px] border-brand-emerald bg-[#0F292B]/80 text-white p-6 shadow-xl glow-emerald-strong relative z-10">
+          
+          {/* Header row in card */}
+          <div className="flex justify-between items-start mb-6 border-b border-brand-emerald/30 pb-4">
+              <h2 className="text-2xl font-bold max-w-[50%] leading-tight text-white drop-shadow-md">
+                {diagnosis.condition}
+              </h2>
 
+              {/* Fake Confidence Gauge */}
+              <div className="flex flex-col items-center min-w-[30%]">
+                 <div className="relative w-24 h-12 overflow-hidden flex items-end justify-center mb-1">
+                     {/* Semi circle arc track */}
+                     <div className="absolute top-0 w-24 h-24 border-4 border-gray-700 rounded-full"></div>
+                     {/* Active arc */}
+                     <div 
+                        className="absolute top-0 w-24 h-24 border-4 border-brand-emerald rounded-full transition-all duration-1000 ease-out"
+                        style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)', transformOrigin: 'center', transform: `rotate(${(diagnosis.confidence / 100) * 180 - 180}deg)` }}
+                     ></div>
+                 </div>
+                 <p className="text-[10px] uppercase tracking-wider text-brand-emerald font-semibold mb-0">Confidence</p>
+                 <p className="text-2xl font-extrabold text-white drop-shadow-sm">{diagnosis.confidence}%</p>
+              </div>
+          </div>
+
+          {/* List Details */}
+          <div className="space-y-4">
+              <div className="flex items-center">
+                  <span className="text-2xl mr-4 opacity-80">⚖️</span>
+                  <div>
+                      <span className="text-gray-300 text-sm">Severity Level: </span>
+                      <span className="font-bold text-brand-emerald">{severity}</span>
+                  </div>
+              </div>
+              <div className="flex items-start">
+                  <span className="text-2xl mr-4 opacity-80 mt-1">🛏️</span>
+                  <div>
+                      <span className="text-gray-300 text-sm">Recommended Action:<br/></span>
+                      <span className="font-bold text-white leading-tight block mt-1">{recommendation}</span>
+                  </div>
+              </div>
+              <div className="flex items-center">
+                  <span className="text-2xl mr-4 opacity-80">👨‍⚕️</span>
+                  <div>
+                      <span className="text-gray-300 text-sm">Doctor Visit Urgency: </span>
+                      <span className={`font-bold px-2 py-0.5 rounded text-xs uppercase tracking-wide ml-1 ${urgencyColor}`}>{urgency}</span>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* Bottom Actions */}
+      <div className="w-full max-w-sm flex flex-col gap-4 mt-10 mb-2 z-10">
         <button
-            disabled={isSpeaking}
-            className="w-full font-bold bg-emerald-600 text-white py-4 px-8 rounded-2xl text-lg hover:bg-emerald-700 transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onViewReports}
+          className="w-full font-bold bg-[#143632] border border-brand-emerald text-brand-emerald py-4 px-6 rounded-2xl text-lg hover:bg-[#1A4541] transition-all duration-300 shadow-lg"
         >
-            Recommend Telemedicine
+          View Full Report
         </button>
+        <button
+          className="w-full font-bold bg-brand-orange text-white py-4 px-6 rounded-2xl text-lg hover:bg-[#ff8a3d] transition-all duration-300 shadow-lg shadow-brand-orange/20 glow-orange"
+        >
+          Connect to Doctor
+        </button>
+      </div>
 
-        {isShareSupported && (
-            <button 
-                onClick={handleShare}
-                disabled={isSpeaking}
-                className="w-full mt-4 flex justify-center items-center p-4 rounded-2xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                <ShareIcon className="w-5 h-5 mr-3" />
-                <span className="font-bold text-gray-800 dark:text-gray-100">Share Diagnosis</span>
-            </button>
-        )}
-
-        {onViewReports && (
-            <button 
-              onClick={onViewReports} 
-              disabled={isSpeaking}
-              className="w-full mt-4 flex justify-between items-center p-4 rounded-2xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                <span className="font-bold text-gray-800 dark:text-gray-100">Past Reports</span>
-                <ChevronRightIcon className="w-6 h-6 text-gray-400" />
-            </button>
-        )}
     </div>
   );
 };
 
-export default ResultCard;
+export default ResultScreen;

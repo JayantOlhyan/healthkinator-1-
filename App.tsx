@@ -3,6 +3,7 @@ import { GameState, Diagnosis, GeminiResponse, UserAnswer, Report, Content, User
 import WelcomeScreen from './components/WelcomeScreen';
 import GameScreen from './components/GameScreen';
 import ResultCard from './components/ResultScreen';
+import ConnectDoctorScreen from './components/ConnectDoctorScreen';
 import PastReportsScreen from './components/PastReportsScreen';
 import SettingsScreen from './components/SettingsScreen';
 import { Header } from './components/Layout';
@@ -32,12 +33,10 @@ const App: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState('');
   const [currentAudio, setCurrentAudio] = useState<string | null>(null);
 
+  // Theme is always dark/navy now
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    localStorage.setItem('theme', 'dark');
+  }, []);
 
   // Load reports and profile from backend on mount
   useEffect(() => {
@@ -92,7 +91,7 @@ const App: React.FC = () => {
       setIsLoading(false);
   };
 
-  const startGame = async () => {
+  const startGame = async (language: string) => {
     setGameState(GameState.Playing);
     setDiagnosis(null);
     setError(null);
@@ -101,14 +100,21 @@ const App: React.FC = () => {
     setCurrentAudio(null);
     setIsLoading(true);
 
-    const initialUserMessage: Content = { role: 'user', parts: [{ text: "Let's begin. Ask me the first question about my symptoms." }] };
+    // TODO: use language selection to modify initial prompt if needed
+    const initialPrompt = language === 'hi' 
+      ? "Let's begin. Ask me the first question about my symptoms in Hindi."
+      : "Let's begin. Ask me the first question about my symptoms.";
+
+    const initialUserMessage: Content = { role: 'user', parts: [{ text: initialPrompt }] };
     setHistory([initialUserMessage]);
 
     try {
       const response = await generateResponse([initialUserMessage]);
-      if (response.type === 'question') {
-          const audio = await generateSpeech(response.text);
-          setCurrentAudio(audio);
+      try {
+        const audio = await generateSpeech(response.text);
+        setCurrentAudio(audio);
+      } catch (audioError) {
+        console.warn("Speech generation failed, continuing with text only", audioError);
       }
       await processResponse(response, [initialUserMessage]);
     } catch (e) {
@@ -132,13 +138,17 @@ const App: React.FC = () => {
     try {
       const response = await generateResponse(newHistory);
       
-      if (response.type === 'question') {
-          const audio = await generateSpeech(response.text);
-          setCurrentAudio(audio);
-      } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
-          const textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
-          const audio = await generateSpeech(textToSpeak);
-          setCurrentAudio(audio);
+      try {
+        if (response.type === 'question') {
+            const audio = await generateSpeech(response.text);
+            setCurrentAudio(audio);
+        } else if (response.type === 'diagnosis' && response.condition && response.confidence !== undefined) {
+            const textToSpeak = `The probable diagnosis is ${response.condition}, with a confidence of ${response.confidence} percent.`;
+            const audio = await generateSpeech(textToSpeak);
+            setCurrentAudio(audio);
+        }
+      } catch (audioError) {
+        console.warn("Speech generation failed, continuing with text only", audioError);
       }
 
       await processResponse(response, newHistory);
@@ -156,6 +166,7 @@ const App: React.FC = () => {
 
   const showPastReports = () => setGameState(GameState.PastReports);
   const showSettingsScreen = () => setGameState(GameState.Settings);
+  const showConnectDoctorScreen = () => setGameState(GameState.ConnectDoctor);
   
   const showWelcomeScreen = () => {
     setGameState(GameState.Welcome);
@@ -174,8 +185,9 @@ const App: React.FC = () => {
               handleAnswer={handleAnswer}
               onQuit={showWelcomeScreen}
               audioData={currentAudio}
+              history={history}
             />
-            {diagnosis && <ResultCard diagnosis={diagnosis} onViewReports={showPastReports} audioData={currentAudio} />}
+            {diagnosis && <ResultCard diagnosis={diagnosis} onViewReports={showPastReports} onConnectDoctor={showConnectDoctorScreen} audioData={currentAudio} />}
             {error && (
                 <div className="mt-4 text-center text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/30 p-4 rounded-lg">
                     <strong>Error:</strong> {error}
@@ -194,25 +206,23 @@ const App: React.FC = () => {
                   theme={theme}
                   setTheme={setTheme}
                />;
+      case GameState.ConnectDoctor:
+        return <ConnectDoctorScreen onBack={showWelcomeScreen} />;
       case GameState.Welcome:
       default:
-        return <WelcomeScreen onStart={startGame} onViewReports={showPastReports} />;
+        return <WelcomeScreen onStart={startGame} onShowSettings={showSettingsScreen} onViewReports={showPastReports} />;
     }
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="bg-brand-navy min-h-[100dvh] flex flex-col items-center justify-center sm:p-4 text-white font-sans">
       <div 
-        className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-200 dark:border-gray-700 flex flex-col min-h-[90vh] md:min-h-[700px]"
+        className="w-full h-[100dvh] sm:h-[85vh] sm:max-h-[900px] sm:max-w-md sm:rounded-[3rem] bg-brand-navy sm:border-[8px] sm:border-gray-800 flex flex-col relative overflow-hidden shadow-2xl shadow-brand-emerald/10"
       >
-        <Header userProfile={userProfile} theme={theme} toggleTheme={toggleTheme} onShowSettings={showSettingsScreen} />
-        <main className="flex-grow flex flex-col">
+        <main className="flex-grow flex flex-col relative z-10 w-full h-full">
           {renderContent()}
         </main>
       </div>
-      <footer className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
-        <p>Healthkinator &copy; 2024. This is not medical advice.</p>
-      </footer>
     </div>
   );
 };

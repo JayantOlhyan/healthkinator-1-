@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserAnswer } from '../types';
-import { LoadingSpinner, MicrophoneIcon } from './icons';
+import { UserAnswer, Content } from '../types';
+import { LoadingSpinner, MicrophoneIcon, ChevronLeftIcon } from './icons';
 import { playAudio, stopAudio } from '../utils/audio';
 
-// Fix: Add type definitions for the Web Speech API to resolve TypeScript errors.
+// (Keeping SpeechRecognition types)
 declare global {
   interface Window {
     SpeechRecognition: typeof SpeechRecognition;
@@ -66,24 +66,25 @@ interface GameScreenProps {
   handleAnswer: (answer: UserAnswer) => void;
   onQuit: () => void;
   audioData: string | null;
+  history: Content[];
 }
 
-const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, disabled: boolean, variant?: 'primary' | 'secondary' }> = ({ onClick, children, disabled, variant = 'secondary' }) => {
-    const primaryClasses = "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/40";
-    const secondaryClasses = "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600";
-    
+const AnswerButton: React.FC<{ onClick: () => void, children: React.ReactNode, disabled: boolean, variant: 'yes' | 'no' }> = ({ onClick, children, disabled, variant }) => {
+    const isYes = variant === 'yes';
     return (
         <button 
             onClick={onClick}
             disabled={disabled}
-            className={`font-bold w-full sm:w-auto py-3 px-8 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 ${variant === 'primary' ? primaryClasses : secondaryClasses}`}
+            className={`font-bold py-4 px-6 rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex-1 flex items-center justify-center space-x-2 text-xl shadow-lg
+                ${isYes ? 'bg-brand-success text-white hover:bg-emerald-600 shadow-brand-success/30' : 'bg-brand-danger text-white hover:bg-red-600 shadow-brand-danger/30'}`}
         >
-            {children}
+            <span>{children}</span>
+            {isYes ? <span>✓</span> : <span>✕</span>}
         </button>
     );
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, handleAnswer, onQuit, audioData }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, handleAnswer, onQuit, audioData, history }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -91,6 +92,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const isSpeechRecognitionSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Calculate question number based on history (assumes alternating user/model messages)
+  const questionNumber = Math.max(1, Math.floor((history.length + 1) / 2));
+  const MAX_QUESTIONS = 12; // Example static max
 
   // Play audio when it's passed down as a prop
   useEffect(() => {
@@ -170,7 +175,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
           return;
         }
 
-        // Use regex for more robust matching of whole words and add more phrases
         const affirmative = ['yes', 'yeah', 'yep', 'yup', 'correct', 'affirmative', 'sure', 'i guess so', 'i think so', 'sounds right'];
         const negative = ['no', 'nope', 'nah', 'negative', "i don't think so", "not really"];
         const uncertain = ["don't know", "do not know", "not sure", "unsure", "no idea"];
@@ -189,7 +193,6 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
           handleAnswer("I don't know");
           recognition.stop();
         } else {
-          // Only show error for final, misunderstood transcripts
           setSpeechError(`Sorry, I didn't understand "${finalTranscript}". Please say Yes, No, or I don't know.`);
         }
       }
@@ -231,56 +234,92 @@ const GameScreen: React.FC<GameScreenProps> = ({ currentQuestion, isLoading, han
     if (speechError) return speechError;
     if (isListening) return transcript ? `"${transcript}"` : "Listening...";
     if (isSpeaking) return "Healthkinator is speaking...";
-    return "Tap the mic to answer";
+    return "";
   }
 
   return (
-    <div className="w-full text-center flex-grow flex flex-col justify-center">
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-40">
-          <LoadingSpinner className="w-12 h-12 text-emerald-500" />
-          <p className="mt-4 text-gray-500 dark:text-gray-400">Healthkinator is thinking...</p>
-        </div>
-      ) : (
-        <div className="h-40 flex items-center justify-center">
-          <h2 className="text-3xl text-gray-800 dark:text-gray-100 font-bold max-w-md animate-fade-in">
-            {currentQuestion}
-          </h2>
-        </div>
-      )}
-
-      {/* Voice Input Section */}
-      <div className="my-6 flex flex-col items-center justify-center space-y-3">
-          <button
-              onClick={toggleListening}
-              disabled={!isSpeechRecognitionSupported || isLoading}
-              className={`relative w-20 h-20 rounded-full transition-all duration-300 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed
-                  ${isListening ? 'bg-red-500 text-white shadow-lg shadow-red-500/40' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/40'}`}
-              aria-label={isListening ? 'Stop listening' : 'Start listening'}
-          >
-              <MicrophoneIcon className="w-8 h-8"/>
-              {isListening && <span className="absolute inset-0 rounded-full bg-white/30 animate-ping"></span>}
-          </button>
-          <p className="text-sm text-gray-500 dark:text-gray-400 h-5 px-2">
-              {getMicStatusText()}
-          </p>
-      </div>
-
-
-      <div className="w-full flex flex-wrap justify-center gap-3 sm:gap-4">
-        <AnswerButton onClick={() => handleAnswerClick('Yes')} disabled={isLoading} variant="primary">Yes</AnswerButton>
-        <AnswerButton onClick={() => handleAnswerClick('No')} disabled={isLoading}>No</AnswerButton>
-        <AnswerButton onClick={() => handleAnswerClick("I don't know")} disabled={isLoading}>I don't know</AnswerButton>
-      </div>
-
-      <div className="mt-8 text-center">
-        <button
-          onClick={handleQuitClick}
-          disabled={isLoading}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:underline disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Quit Diagnosis
+    <div className="w-full h-full flex flex-col pt-6 pb-8 px-6 relative animate-fade-in text-white overflow-y-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 z-10 relative">
+        <button onClick={handleQuitClick} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
+            <ChevronLeftIcon className="w-6 h-6 text-white" />
         </button>
+        {/* Star Badge */}
+        <div className="relative flex items-center justify-center w-10 h-10">
+           {/* Simple CSS star shape or just a glowing circle for now */}
+           <div className="absolute inset-0 bg-brand-teal rotate-45 rounded-sm shadow-lg shadow-brand-emerald/40 glow-emerald"></div>
+           <span className="relative z-10 font-bold text-white shadow-sm">{questionNumber}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col flex-grow items-center justify-center max-w-sm mx-auto w-full relative z-10">
+          
+          {/* Question Text Bubble */}
+          <div className="relative w-full mb-8">
+              <div className="bg-white text-gray-900 rounded-3xl p-5 shadow-lg relative text-center min-h-[5rem] flex items-center justify-center">
+                  {isLoading ? (
+                    <LoadingSpinner className="w-8 h-8 text-brand-emerald mx-auto" />
+                  ) : (
+                    <h2 className="text-xl font-bold">{currentQuestion}</h2>
+                  )}
+                  {/* Bubble tail pointing down */}
+                  <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[15px] border-l-transparent border-t-[20px] border-t-white border-r-[15px] border-r-transparent"></div>
+              </div>
+          </div>
+
+          {/* Central Avatar Focus */}
+          <div className="relative mb-10 mt-6">
+              {/* Pulsing ring behind avatar */}
+              <div className="absolute inset-[-10px] rounded-full bg-brand-emerald/20 animate-ping" style={{ animationDuration: '3s' }}></div>
+              <div className="w-40 h-40 rounded-full bg-brand-navy border-[3px] border-brand-emerald p-2 relative z-10 shadow-lg shadow-brand-emerald/50 flex items-center justify-center overflow-hidden">
+                <img src="/doctor-avatar.png" alt="Doctor" className="w-full h-full object-cover rounded-full" />
+              </div>
+          </div>
+
+          {/* Progress Section */}
+          <div className="w-full mb-8 px-4 text-center">
+              <p className="text-brand-emerald font-semibold mb-2">Question {questionNumber} of {MAX_QUESTIONS}</p>
+              {/* Progress Bar */}
+              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div 
+                      className="h-full bg-brand-emerald transition-all duration-500 ease-out" 
+                      style={{ width: `${Math.min(100, (questionNumber / MAX_QUESTIONS) * 100)}%` }}
+                  ></div>
+              </div>
+          </div>
+
+          {/* Answer Action Buttons */}
+          <div className="w-full flex justify-between gap-4 mb-4">
+              <AnswerButton onClick={() => handleAnswerClick('Yes')} disabled={isLoading} variant="yes">YES</AnswerButton>
+              <AnswerButton onClick={() => handleAnswerClick('No')} disabled={isLoading} variant="no">NO</AnswerButton>
+          </div>
+
+          {/* Not Sure Link & Mic */}
+          <div className="flex flex-col items-center mt-2 w-full relative">
+              <button 
+                onClick={() => handleAnswerClick("I don't know")} 
+                disabled={isLoading}
+                className="text-gray-400 font-medium hover:text-white mb-6 uppercase tracking-wider text-sm transition-colors"
+               >
+                  Not Sure
+              </button>
+              
+              {/* Voice Mic Overlay at bottom */}
+              <div className="flex flex-col items-center text-center pb-2">
+                 <button
+                    onClick={toggleListening}
+                    disabled={!isSpeechRecognitionSupported || isLoading}
+                    className={`relative w-16 h-16 rounded-full transition-all duration-300 flex items-center justify-center disabled:opacity-50
+                        ${isListening ? 'bg-brand-orange text-white glow-orange' : 'bg-[#182C40] text-brand-emerald border border-brand-emerald hover:bg-brand-teal/30'}`}
+                 >
+                    <MicrophoneIcon className="w-6 h-6"/>
+                 </button>
+                 <p className="text-xs text-brand-emerald h-4 mt-2 font-medium">
+                    {getMicStatusText()}
+                 </p>
+              </div>
+          </div>
+
       </div>
     </div>
   );

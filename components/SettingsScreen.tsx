@@ -7,13 +7,11 @@ interface SettingsScreenProps {
     onProfileUpdate: (profile: UserProfile) => void;
     onBack: () => void;
     onClearReports: () => void;
-    theme: 'light' | 'dark';
-    setTheme: (theme: 'light' | 'dark') => void;
 }
 
 const AVATAR_OPTIONS: AvatarId[] = ['default', 'avatar1', 'avatar2', 'avatar3', 'avatar4', 'avatar5', 'avatar6', 'avatar7'];
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileUpdate, onBack, onClearReports, theme, setTheme }) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileUpdate, onBack, onClearReports }) => {
     
     const [name, setName] = useState(userProfile.name);
     const [selectedAvatar, setSelectedAvatar] = useState(userProfile.avatar);
@@ -32,44 +30,44 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileU
     };
 
     return (
-        <div className="p-6 animate-fade-in flex flex-col h-full">
+        <div className="p-6 animate-fade-in flex flex-col h-full text-white">
             <div className="flex items-center mb-6 flex-shrink-0">
-                <button onClick={onBack} className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 dark:hover:text-gray-200 mr-4">
-                    <ChevronLeftIcon className="w-5 h-5" />
+                <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors mr-2">
+                    <ChevronLeftIcon className="w-6 h-6 text-white" />
                 </button>
-                <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-100">Settings</h2>
+                <h2 className="text-3xl font-bold flex-grow text-center mr-10 relative">Settings</h2>
             </div>
 
-            <div className="space-y-8 overflow-y-auto">
+            <div className="space-y-8 overflow-y-auto pb-10">
                 {/* Profile Settings */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Profile</h3>
-                    <div className="bg-gray-100 dark:bg-gray-700/50 rounded-lg p-4 space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-300 mb-3">Profile</h3>
+                    <div className="bg-[#14263A] rounded-2xl p-4 border border-brand-teal/20 space-y-4">
                         {/* Name Input */}
                         <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">Name</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     id="name"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
-                                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 focus:ring-2 focus:ring-emerald-500"
+                                    className="w-full p-3 border border-gray-600 rounded-xl bg-brand-navy text-white focus:ring-2 focus:ring-brand-emerald focus:border-transparent transition-all outline-none"
                                     placeholder="Enter your name"
                                 />
-                                <EditIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                                <EditIcon className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Avatar Selection */}
                         <div>
-                           <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Avatar</label>
-                           <div className="flex flex-wrap justify-center gap-x-4 gap-y-3">
+                           <label className="block text-sm font-medium text-gray-400 mb-3">Avatar</label>
+                           <div className="flex flex-wrap justify-center gap-x-4 gap-y-3 p-1">
                                 {AVATAR_OPTIONS.map(avatarId => (
                                     <button 
                                         key={avatarId}
                                         onClick={() => setSelectedAvatar(avatarId)}
-                                        className={`p-1 rounded-full transition-all duration-200 ${selectedAvatar === avatarId ? 'ring-2 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-700/50 ring-emerald-500' : 'hover:opacity-80'}`}
+                                        className={`p-1 rounded-full transition-all duration-300 ${selectedAvatar === avatarId ? 'ring-2 ring-offset-2 ring-offset-[#14263A] ring-brand-emerald shadow-lg shadow-brand-emerald/40 glow-emerald' : 'hover:opacity-80'}`}
                                         aria-label={`Select avatar ${avatarId}`}
                                     >
                                         <UserAvatarIcon avatar={avatarId} className="w-14 h-14" />
@@ -80,42 +78,23 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ userProfile, onProfileU
                     </div>
                      <button
                         onClick={handleSaveProfile}
-                        className="w-full mt-4 font-bold bg-emerald-600 text-white py-3 px-6 rounded-lg text-base hover:bg-emerald-700 transition-colors duration-200 shadow shadow-emerald-500/30 disabled:bg-emerald-400 disabled:cursor-not-allowed"
+                        className="w-full mt-6 font-bold bg-brand-emerald text-brand-navy py-4 px-6 rounded-2xl text-lg hover:bg-brand-teal hover:text-white transition-colors duration-300 shadow-lg shadow-brand-emerald/20 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed disabled:shadow-none"
                         disabled={(name.trim() === userProfile.name && selectedAvatar === userProfile.avatar) || name.trim() === ''}
                     >
                         {savedMessage ? 'Profile Saved!' : 'Save Profile'}
                     </button>
                 </div>
 
-                {/* Theme Settings */}
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Theme</h3>
-                    <div className="flex space-x-2 p-1 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                        <button 
-                            onClick={() => setTheme('light')}
-                            className={`w-full py-2 rounded-md text-sm font-medium transition-colors ${theme === 'light' ? 'bg-white dark:bg-gray-500 text-emerald-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300'}`}
-                        >
-                            Light
-                        </button>
-                        <button 
-                            onClick={() => setTheme('dark')}
-                            className={`w-full py-2 rounded-md text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-white dark:bg-gray-500 text-emerald-600 dark:text-white shadow' : 'text-gray-600 dark:text-gray-300'}`}
-                        >
-                            Dark
-                        </button>
-                    </div>
-                </div>
-
                 {/* Data Settings */}
                 <div>
-                    <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Data Management</h3>
+                    <h3 className="text-lg font-semibold text-gray-300 mb-3">Data Management</h3>
                     <button
                         onClick={handleClear}
-                        className="w-full font-bold bg-red-600 text-white py-3 px-6 rounded-lg text-base hover:bg-red-700 transition-colors duration-200 shadow shadow-red-500/30"
+                        className="w-full font-bold bg-brand-danger text-white py-4 px-6 rounded-2xl text-lg hover:bg-red-700 transition-colors duration-300 shadow shadow-brand-danger/30"
                     >
                         Clear All Past Reports
                     </button>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">This will permanently delete all your saved diagnosis sessions.</p>
+                    <p className="text-xs text-gray-400 mt-2 text-center px-4">This will permanently delete all your saved diagnosis sessions.</p>
                 </div>
             </div>
         </div>
