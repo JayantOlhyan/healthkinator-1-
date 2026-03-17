@@ -40,50 +40,65 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
       </div>
 
       {/* Main Result Card */}
-      <div className="w-full max-w-sm rounded-[2rem] border-[3px] border-brand-emerald bg-[#0F292B]/80 text-white p-6 shadow-xl glow-emerald-strong relative z-10 mb-8 flex-shrink-0">
+      <div className="w-full max-w-sm rounded-[2.5rem] border-[3px] border-brand-emerald bg-gradient-to-br from-[#0F292B] to-[#0a1b1d] text-white p-6 shadow-2xl glow-emerald-strong relative z-10 mb-8 flex-shrink-0 animate-scale-in">
           
           {/* Header row in card */}
-          <div className="flex justify-between items-start mb-6 border-b border-brand-emerald/30 pb-4">
-              <h2 className="text-2xl font-bold max-w-[50%] leading-tight text-white drop-shadow-md">
+          <div className="flex justify-between items-start mb-6 border-b border-brand-emerald/20 pb-5">
+              <h2 className="text-2xl font-black max-w-[50%] leading-tight text-white drop-shadow-md">
                 {diagnosis.condition}
               </h2>
 
-              {/* Fake Confidence Gauge */}
+              {/* Confidence Gauge */}
               <div className="flex flex-col items-center min-w-[30%]">
                  <div className="relative w-24 h-12 overflow-hidden flex items-end justify-center mb-1">
-                     {/* Semi circle arc track */}
-                     <div className="absolute top-0 w-24 h-24 border-4 border-gray-700 rounded-full"></div>
-                     {/* Active arc */}
+                     <div className="absolute top-0 w-24 h-24 border-4 border-white/5 rounded-full"></div>
                      <div 
                         className="absolute top-0 w-24 h-24 border-4 border-brand-emerald rounded-full transition-all duration-1000 ease-out"
                         style={{ clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)', transformOrigin: 'center', transform: `rotate(${(diagnosis.confidence / 100) * 180 - 180}deg)` }}
                      ></div>
                  </div>
-                 <p className="text-[10px] uppercase tracking-wider text-brand-emerald font-semibold mb-0">Confidence</p>
-                 <p className="text-2xl font-extrabold text-white drop-shadow-sm">{diagnosis.confidence}%</p>
+                 <p className="text-[10px] uppercase tracking-[0.2em] text-brand-emerald/80 font-bold mb-0">Confidence</p>
+                 <p className="text-2xl font-black text-white drop-shadow-sm">{diagnosis.confidence}%</p>
               </div>
           </div>
 
+          {/* Diagnosis Analysis */}
+          {diagnosis.analysis && (
+            <div className="mb-6 bg-brand-emerald/10 rounded-2xl p-4 border border-brand-emerald/20">
+                <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">📋</span>
+                    <h3 className="text-xs uppercase tracking-widest font-bold text-brand-emerald">Medical Analysis</h3>
+                </div>
+                <p className="text-sm text-gray-200 leading-relaxed font-medium italic">
+                    "{diagnosis.analysis}"
+                </p>
+            </div>
+          )}
+
           {/* List Details */}
-          <div className="space-y-4">
-              <div className="flex items-center">
-                  <span className="text-2xl mr-4 opacity-80">⚖️</span>
+          <div className="space-y-5">
+              <div className="flex items-center group">
+                  <div className="w-10 h-10 rounded-xl bg-brand-emerald/10 flex items-center justify-center mr-4 border border-brand-emerald/20 transition-all group-hover:scale-110">
+                    <span className="text-xl">⚖️</span>
+                  </div>
                   <div>
-                      <span className="text-gray-300 text-sm">Severity Level: </span>
+                      <span className="text-gray-400 text-[10px] uppercase tracking-widest block font-bold">Severity Level</span>
                       <span className="font-bold text-brand-emerald">{severity}</span>
                   </div>
               </div>
               
-              <div className="flex items-start">
-                  <span className="text-2xl mr-4 opacity-80 mt-1">🛏️</span>
+              <div className="flex items-start group">
+                  <div className="w-10 h-10 rounded-xl bg-brand-emerald/10 flex items-center justify-center mr-4 border border-brand-emerald/20 shrink-0 transition-all group-hover:scale-110">
+                    <span className="text-xl">🛏️</span>
+                  </div>
                   <div className="flex-1">
-                      <span className="text-gray-300 text-sm mb-2 block">Recommended Actions:</span>
-                      <ul className="space-y-2">
+                      <span className="text-gray-400 text-[10px] uppercase tracking-widest block font-bold mb-2">Recommended Actions</span>
+                      <ul className="space-y-3">
                         {diagnosis.suggestions && diagnosis.suggestions.length > 0 ? (
                           diagnosis.suggestions.map((sug, idx) => (
-                            <li key={idx} className="flex gap-2 text-sm">
-                              <span className="text-brand-emerald shrink-0">•</span>
-                              <span className="text-white font-medium leading-tight">{sug}</span>
+                            <li key={idx} className="flex gap-3 text-sm items-start">
+                              <span className="text-brand-emerald shrink-0 bg-brand-emerald/20 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold mt-0.5">{idx + 1}</span>
+                              <span className="text-gray-100 font-semibold leading-tight">{sug}</span>
                             </li>
                           ))
                         ) : (
@@ -93,11 +108,13 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
                   </div>
               </div>
 
-              <div className="flex items-center pt-2 border-t border-brand-emerald/10">
-                  <span className="text-2xl mr-4 opacity-80">👨‍⚕️</span>
+              <div className="flex items-center pt-4 border-t border-brand-emerald/10 group">
+                  <div className="w-10 h-10 rounded-xl bg-brand-emerald/10 flex items-center justify-center mr-4 border border-brand-emerald/20 transition-all group-hover:scale-110">
+                    <span className="text-xl">👨‍⚕️</span>
+                  </div>
                   <div>
-                      <span className="text-gray-300 text-sm">Doctor Visit Urgency: </span>
-                      <span className={`font-bold px-2 py-0.5 rounded text-xs uppercase tracking-wide ml-1 ${urgencyColor}`}>{urgency}</span>
+                      <span className="text-gray-400 text-[10px] uppercase tracking-widest block font-bold">Doctor Visit Urgency</span>
+                      <span className={`font-bold px-3 py-1 rounded-lg text-[10px] uppercase tracking-widest mt-1 inline-block ${urgencyColor}`}>{urgency}</span>
                   </div>
               </div>
           </div>
