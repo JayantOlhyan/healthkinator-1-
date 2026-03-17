@@ -29,6 +29,29 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
       ? diagnosis.suggestions[0] 
       : 'Rest and observe symptoms';
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'My Healthkinator Assessment',
+      text: `My Healthkinator Diagnosis: ${diagnosis.condition} (${diagnosis.confidence}% Confidence). \n\n Analysis: ${diagnosis.analysis || diagnosis.report} \n\nCheck your symptoms with Healthkinator!`,
+      url: window.location.href
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+        alert('Result copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col items-center h-full w-full p-6 animate-fade-in text-white relative overflow-y-auto hide-scrollbar pb-10">
       
@@ -40,7 +63,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
       </div>
 
       {/* Main Result Card */}
-      <div className="w-full max-w-sm rounded-[2.5rem] border-[3px] border-brand-emerald bg-gradient-to-br from-[#0F292B] to-[#0a1b1d] text-white p-6 shadow-2xl glow-emerald-strong relative z-10 mb-8 flex-shrink-0 animate-scale-in">
+      <div className="w-full max-w-sm rounded-[2.5rem] border-[3px] border-brand-emerald bg-gradient-to-br from-[#0F292B] to-[#0a1b1d] text-white p-6 shadow-2xl glow-emerald-strong relative z-10 mb-6 flex-shrink-0 animate-scale-in">
           
           {/* Header row in card */}
           <div className="flex justify-between items-start mb-6 border-b border-brand-emerald/20 pb-5">
@@ -119,6 +142,15 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ diagnosis, onViewReports })
               </div>
           </div>
       </div>
+
+      {/* Share Button */}
+      <button
+        onClick={handleShare}
+        className="w-full max-w-sm flex items-center justify-center gap-3 font-bold bg-[#1A4541] border border-brand-emerald/40 text-brand-emerald py-3 px-6 rounded-2xl text-base hover:bg-[#205651] transition-all duration-300 shadow-lg mb-8"
+      >
+        <span className="text-xl">🔗</span>
+        Share My Result
+      </button>
 
       {/* Doctor Connection Section */}
       <div className="w-full max-w-sm bg-white/5 border border-white/10 rounded-3xl p-6 mb-8 z-10 flex-shrink-0">
