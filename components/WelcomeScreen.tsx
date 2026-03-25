@@ -28,22 +28,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStart, onViewReports, o
       <div className="flex flex-col items-center justify-center flex-grow w-full z-10 mt-10">
         <div className="relative mb-8">
           {/* Avatar with Strong Neon Glow */}
-          <div className="w-40 h-40 rounded-full border-2 border-brand-emerald glow-emerald-strong flex items-center justify-center bg-brand-navy p-2 relative overflow-hidden">
-             {/* Using the placeholder avatar we generated */}
-             <img 
-               src="/doctor-avatar.png" 
-               alt="Healthkinator Doctor" 
-               className="w-full h-full object-cover rounded-full"
-               onError={(e) => {
-                 // Fallback if image fails to load
-                 (e.target as HTMLImageElement).style.display = 'none';
-                 (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-               }}
-             />
-             <div className="hidden absolute inset-0 flex items-center justify-center text-brand-emerald text-4xl">
-               👨‍⚕️
-             </div>
-          </div>
+           <div className="w-40 h-40 rounded-full border-2 border-brand-emerald glow-emerald flex items-center justify-center bg-brand-navy/50 p-6 relative overflow-hidden">
+              <img 
+                src="/logo.svg" 
+                alt="Healthkinator Logo" 
+                className="w-full h-full object-contain drop-shadow-lg"
+              />
+           </div>
         </div>
 
         <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">Healthkinator</h1>
