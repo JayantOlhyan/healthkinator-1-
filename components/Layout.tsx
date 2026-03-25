@@ -11,8 +11,8 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ userProfile, theme, toggleTheme, onShowSettings }) => (
   <header className="w-full p-6 flex items-center justify-between">
-    <div className="flex items-center space-x-4">
-        <UserAvatarIcon avatar={userProfile.avatar} className="w-12 h-12 flex-shrink-0" />
+    <div className="flex items-center space-x-3">
+        <img src="/logo.svg" alt="Healthkinator Logo" className="w-10 h-10 object-contain" />
         <div>
             <h1 className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
               Healthkinator
